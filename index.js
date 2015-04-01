@@ -6,34 +6,40 @@ var sheet = css.sheet;
 var rules = sheet.rules || sheet.cssRules;
 
 // loop through each rule
-var rule, selector, styleSheet, specificity, $el, declaration, value;
-for (var prop in rules) {
-  if (!rules.hasOwnProperty(rules[prop])) {
-    continue;
-  }
-
-  rule = rules[prop];
-  selector = rule.selectorText;
-  specificity = SPECIFICITY.calculate(selector);
+var rule, selectors, selector, styleSheet, specificity, elems, el, declaration, value;
+for (var j = 0, length = rules.length; j < length; j++) {
+  rule = rules[j];
   styleSheet = rule.parentStyleSheet.href;
 
-  // get all elements that match the rules selector
-  $el = $(selector);
+  // deal with each selector individually since each selector can have it's own
+  // level of specificity
+  selectors = rule.selectorText.split(',');
 
-  // loop through each element and set their computedStyles property for later reference
-  $el.each(function(index, el) {
-    el.computedStyes = el.computedStyes || {};
+  for (var x = 0; selector = selectors[x]; x++) {
+    specificity = [0,0,0,0]; //SPECIFICITY.calculate(selector);
 
-    // loop through each rule declaration and set the value in computedStyles
-    for (var i = 0, len = rule.style.length; i < len; i++) {
-      declaration = rule.style[i];
-      value = rule.style[declaration];
+    elems = document.querySelectorAll(selector);
 
-      el.computedStyles[declaration] = {
-        value: value,
-        styleSheet: styleSheet,
-        specificity: specificity
+    // loop through each element and set their computedStyles property for later
+    // reference
+    for (var k = 0, l = elm.length; k < l; k++) {
+      el = elems[k];
+      el.computedStyles = el.computedStyles || {};
+
+      // loop through each rule declaration and set the value in computedStyles
+      for (var i = 0, len = rule.style.length; i < len; i++) {
+        el.computedStyles[declaration] = el.computedStyles[declaration] || [];
+
+        declaration = rule.style[i];
+        value = rule.style[declaration];
+
+        el.computedStyles[declaration].push({
+          value: value,
+          styleSheet: styleSheet,
+          specificity: specificity,
+          selector: selector
+        });
       }
     }
-  });
+  }
 }
