@@ -1,0 +1,19 @@
+{
+  "name": "pattern-library-audit",
+  "version": "0.0.0",
+  "description": "Audit the CSS on a page to ensure that no other styles are overriding the pattern library's styles",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/straker/pattern-library-audit.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/straker/pattern-library-audit/issues"
+  },
+  "homepage": "https://github.com/straker/pattern-library-audit"
+}
