@@ -76,8 +76,8 @@ for (var y = 0, lent = sheets.length; y < lent; y++) {
 }
 
 function specificitySort(a, b) {
-  return a.specificity[0] < b.specificity[0] ||
-         a.specificity[1] < b.specificity[1] ||
-         a.specificity[2] < b.specificity[2] ||
-         a.specificity[3] < b.specificity[3];
+  return a.specificity[0] > b.specificity[0] ||
+         a.specificity[1] > b.specificity[1] ||
+         a.specificity[2] > b.specificity[2] ||
+         a.specificity[3] > b.specificity[3];
 }
