@@ -146,6 +146,13 @@ if (typeof exports !== 'undefined') {
 }
 
 /*jshint -W084 */
+function specificitySort(a, b) {
+  return b.specificity[0] - a.specificity[0] ||
+         b.specificity[1] - a.specificity[1] ||
+         b.specificity[2] - a.specificity[2] ||
+         b.specificity[3] - a.specificity[3];
+}
+
 var sheets = document.styleSheets;
 var rule, selectors, selector, styleSheet, specificity, elms, el, declaration, value;
 
@@ -181,7 +188,7 @@ for (var y = 0, lent = sheets.length; y < lent; y++) {
     selectors = rule.selectorText.split(',');
 
     for (var x = 0; selector = selectors[x]; x++) {
-      specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',');
+      specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
       try {
         elms = document.querySelectorAll(selector);
@@ -220,11 +227,4 @@ for (var y = 0, lent = sheets.length; y < lent; y++) {
       }
     }
   }
-}
-
-function specificitySort(a, b) {
-  return a.specificity[0] > b.specificity[0] ||
-         a.specificity[1] > b.specificity[1] ||
-         a.specificity[2] > b.specificity[2] ||
-         a.specificity[3] > b.specificity[3];
 }
