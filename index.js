@@ -204,8 +204,8 @@ for (var y = 0, lent = sheets.length; y < lent; y++) {
 
           // when resolving ties for specificity, the rule that was declared last
           // will take precedence. we can simulate this by adding all new rules
-          // to the front of the list so when they are sorted, rules with the
-          // same specificity will not move order
+          // to the front of the list since we are processing the stylesheets in
+          // declared order
           el.computedStyles[declaration].unshift({
             value: value,
             styleSheet: styleSheet,
@@ -223,8 +223,8 @@ for (var y = 0, lent = sheets.length; y < lent; y++) {
 }
 
 function specificitySort(a, b) {
-  return a.specificity[0] < b.specificity[0] ||
-         a.specificity[1] < b.specificity[1] ||
-         a.specificity[2] < b.specificity[2] ||
-         a.specificity[3] < b.specificity[3];
+  return a.specificity[0] > b.specificity[0] ||
+         a.specificity[1] > b.specificity[1] ||
+         a.specificity[2] > b.specificity[2] ||
+         a.specificity[3] > b.specificity[3];
 }
