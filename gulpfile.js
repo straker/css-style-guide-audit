@@ -16,7 +16,7 @@ gulp.task('lint', function() {
 });
 
 gulp.task('scripts', function() {
-  return gulp.src(['node_modules/specificity/specificity.js', 'src/*.js'])
+  return gulp.src(['node_modules/specificity/specificity.js', 'src/core.js', 'src/*.js'])
     .pipe(concat('index.js'))
     .pipe(size())
     .pipe(gulp.dest('.'));

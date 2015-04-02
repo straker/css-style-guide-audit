@@ -145,6 +145,114 @@ if (typeof exports !== 'undefined') {
 	exports.calculate = SPECIFICITY.calculate;
 }
 
+/**
+ * Wrapper function for getting a styleSheets rules
+ * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
+ * @return {CSSRuleList}
+ */
+function getRules(sheet) {
+  return sheet.cssRules || sheet.rules;
+}
+
+/**
+ * Get a styleSheets rules object, taking into account styleSheets that are hosted on
+ * different domains.
+ * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
+ * @param {function} callback - Callback function to be called (needed for xhr CORS request)
+ */
+function getStyleSheetRules(sheet, callback) {
+  // only deal with link tags with an href. this avoids problems with injected
+  // styles from plugins.
+  if (!sheet.href) {
+    return;
+  }
+
+  var rules = getRules(sheet);
+
+  // this is an external styleSheet so we need to request it through CORS
+  if (!rules) {
+    loadCSSCors(sheet.href, function(corsSheet) {
+      callback(getRules(corsSheet.sheet), sheet.href);
+    });
+  }
+  else {
+    callback(rules, sheet.href);
+  }
+}
+
+/**
+ * Iterate over a list of CSS rules and return only valid rules (e.g. no keyframe or
+ * font-family declarations).
+ * @param {CSSRuleList} rules - CSS rules to parse.
+ * @see http://toddmotto.com/ditch-the-array-foreach-call-nodelist-hack/
+ */
+function forEachRule(rules, callback, scope) {
+  var rule;
+
+  for (var i = 0, len = rules.length; i < len; i++) {
+    rule = rules[i];
+
+    // keyframe and font-family declarations do not have selectorText
+    if (!rule.selectorText) {
+      continue;
+    }
+
+    callback.call(scope, rule, i);
+  }
+}
+
+/**
+ * Return the highest selector specificity.
+ * @param {}
+ */
+function compareSpecificity(a, b) {
+  for (var i = 0; i < 4; i++) {
+    if (a[i] > b[i]) { return a; }
+    if (b[i] > a[i]) { return b; }
+  }
+
+  // when both specificities tie, it doesn't matter which one is returned
+  return a;
+}
+
+/**
+ * Load a styleSheet from a cross domain URL.
+ * @param {string} url - The URL of the styleSheet to load.
+ * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
+ */
+function loadCSSCors(url, callback) {
+  var xhr = XMLHttpRequest;
+  var hasCred = false;
+  try {hasCred = xhr && ('withCredentials' in (new xhr()));} catch(e) {}
+
+  if (!hasCred) {
+    console.error('CORS not supported');
+    return;
+  }
+
+  xhr = new xhr();
+  xhr.open('GET', url);
+  xhr.onload = function() {
+    xhr.onload = xhr.onerror = null;
+    if (xhr.status < 200 || xhr.status >=300) {
+      console.error('style failed to load: ' + url);
+    }
+    else {
+      var styleTag = document.createElement('style');
+      styleTag.appendChild(document.createTextNode(xhr.responseText));
+      document.head.appendChild(styleTag);
+      callback(styleTag);
+
+      // clean up style tag when callback is finished
+      styleTag.remove();
+    }
+  };
+  xhr.onerror = function() {
+    xhr.onload = xhr.onerror = null;
+    console.error('XHR CORS CSS fail:' + url);
+  };
+  xhr.send();
+}
 /*jshint -W084 */
 function specificitySort(a, b) {
   return b.specificity[0] - a.specificity[0] ||
@@ -156,75 +264,74 @@ function specificitySort(a, b) {
 var sheets = document.styleSheets;
 var rule, selectors, selector, styleSheet, specificity, elms, el, declaration, value;
 
-// loop through each stylesheet
+// loop through each styleSheet
 for (var y = 0, lent = sheets.length; y < lent; y++) {
   sheet = sheets[y];
 
-  // only deal with link tags with an href. this avoids problems with injected
-  // styles from plugins.
-  if (!sheet.href) {
-    continue;
-  }
+  getStyleSheetRules(sheet, function(rules, href) {
 
-  rules = sheet.cssRules || sheet.rules;
+    forEachRule(rules, function(rule) {
+      // deal with each selector individually since each selector can have it's own
+      // level of specificity
+      selectors = rule.selectorText.split(',');
 
-  // this is an external stylesheet, we'll just skip it for now
-  if (!rules) {
-    continue;
-  }
+      for (var x = 0; selector = selectors[x]; x++) {
+        specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
-  // loop through each rule
-  for (var j = 0, length = rules.length; j < length; j++) {
-    rule = rules[j];
-    styleSheet = rule.parentStyleSheet.href;
+        try {
+          elms = document.querySelectorAll(selector);
+        }
+        catch(e) {
+          continue;
+        }
 
-    // keyframe definitions do not have selectorText
-    if (!rule.selectorText) {
-      continue;
-    }
+        // loop through each element and set their computedStyles property
+        for (var k = 0, l = elms.length; k < l; k++) {
+          el = elms[k];
+          el.computedStyles = el.computedStyles || {};
 
-    // deal with each selector individually since each selector can have it's own
-    // level of specificity
-    selectors = rule.selectorText.split(',');
+          // loop through each rule declaration and set the value in computedStyles
+          for (var i = 0, len = rule.style.length; i < len; i++) {
+            declaration = rule.style[i];
+            value = rule.style[declaration];
 
-    for (var x = 0; selector = selectors[x]; x++) {
-      specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
+            el.computedStyles[declaration] = el.computedStyles[declaration] || [];
+            elStyle = el.computedStyles[declaration];
 
-      try {
-        elms = document.querySelectorAll(selector);
-      }
-      catch(e) {
-        continue;
-      }
+            // check that this selector isn't already being applied to this element
+            var ruleApplied;
+            for (var j = 0, length = elStyle.length; j < length; j++) {
+              if (elStyle[j].selector === rule.selectorText &&
+                  elStyle[j].styleSheet === href) {
+                ruleApplied = elStyle[j];
+                break;
+              }
+            }
 
-      // loop through each element and set their computedStyles property
-      for (var k = 0, l = elms.length; k < l; k++) {
-        el = elms[k];
-        el.computedStyles = el.computedStyles || {};
+            if (ruleApplied) {
+              // if a single selector applies to this element multiple times, we'll just
+              // take the highest specificity and set it on the element
+              elStyle.specificity = compareSpecificity(ruleApplied.specificity, specificity);
+            }
+            else {
+              // when resolving ties for specificity, the rule that was declared last
+              // will take precedence. we can simulate this by adding all new rules
+              // to the front of the list since we are processing the styleSheets in
+              // declared order
+              elStyle.unshift({
+                value: value,
+                styleSheet: href,
+                specificity: specificity,
+                selector: rule.selectorText  // we want the entire selector
+              });
+            }
 
-        // loop through each rule declaration and set the value in computedStyles
-        for (var i = 0, len = rule.style.length; i < len; i++) {
-          declaration = rule.style[i];
-          value = rule.style[declaration];
-
-          el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-
-          // when resolving ties for specificity, the rule that was declared last
-          // will take precedence. we can simulate this by adding all new rules
-          // to the front of the list since we are processing the stylesheets in
-          // declared order
-          el.computedStyles[declaration].unshift({
-            value: value,
-            styleSheet: styleSheet,
-            specificity: specificity,
-            selector: selector
-          });
-
-          // sort declaration styles by specificity (i.e. how the browser would
-          // apply the style)
-          el.computedStyles[declaration].sort(specificitySort);
+            // sort declaration styles by specificity (i.e. how the browser would
+            // apply the style)
+            elStyle.sort(specificitySort);
+          }
         }
       }
-    }
-  }
+    });
+  });
 }

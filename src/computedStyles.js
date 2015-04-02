@@ -1,4 +1,10 @@
 /*jshint -W084 */
+
+/**
+ * Sort a computedStyle by specificity order
+ * @param {object} a
+ * @param {object} b
+ */
 function specificitySort(a, b) {
   return b.specificity[0] - a.specificity[0] ||
          b.specificity[1] - a.specificity[1] ||
@@ -9,75 +15,74 @@ function specificitySort(a, b) {
 var sheets = document.styleSheets;
 var rule, selectors, selector, styleSheet, specificity, elms, el, declaration, value;
 
-// loop through each stylesheet
+// loop through each styleSheet
 for (var y = 0, lent = sheets.length; y < lent; y++) {
   sheet = sheets[y];
 
-  // only deal with link tags with an href. this avoids problems with injected
-  // styles from plugins.
-  if (!sheet.href) {
-    continue;
-  }
+  getStyleSheetRules(sheet, function(rules, href) {
 
-  rules = sheet.cssRules || sheet.rules;
+    forEachRule(rules, function(rule) {
+      // deal with each selector individually since each selector can have it's own
+      // level of specificity
+      selectors = rule.selectorText.split(',');
 
-  // this is an external stylesheet, we'll just skip it for now
-  if (!rules) {
-    continue;
-  }
+      for (var x = 0; selector = selectors[x]; x++) {
+        specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
-  // loop through each rule
-  for (var j = 0, length = rules.length; j < length; j++) {
-    rule = rules[j];
-    styleSheet = rule.parentStyleSheet.href;
+        try {
+          elms = document.querySelectorAll(selector);
+        }
+        catch(e) {
+          continue;
+        }
 
-    // keyframe definitions do not have selectorText
-    if (!rule.selectorText) {
-      continue;
-    }
+        // loop through each element and set their computedStyles property
+        for (var k = 0, l = elms.length; k < l; k++) {
+          el = elms[k];
+          el.computedStyles = el.computedStyles || {};
 
-    // deal with each selector individually since each selector can have it's own
-    // level of specificity
-    selectors = rule.selectorText.split(',');
+          // loop through each rule declaration and set the value in computedStyles
+          for (var i = 0, len = rule.style.length; i < len; i++) {
+            declaration = rule.style[i];
+            value = rule.style[declaration];
 
-    for (var x = 0; selector = selectors[x]; x++) {
-      specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
+            el.computedStyles[declaration] = el.computedStyles[declaration] || [];
+            elStyle = el.computedStyles[declaration];
 
-      try {
-        elms = document.querySelectorAll(selector);
-      }
-      catch(e) {
-        continue;
-      }
+            // check that this selector isn't already being applied to this element
+            var ruleApplied;
+            for (var j = 0, length = elStyle.length; j < length; j++) {
+              if (elStyle[j].selector === rule.selectorText &&
+                  elStyle[j].styleSheet === href) {
+                ruleApplied = elStyle[j];
+                break;
+              }
+            }
 
-      // loop through each element and set their computedStyles property
-      for (var k = 0, l = elms.length; k < l; k++) {
-        el = elms[k];
-        el.computedStyles = el.computedStyles || {};
+            if (ruleApplied) {
+              // if a single selector applies to this element multiple times, we'll just
+              // take the highest specificity and set it on the element
+              elStyle.specificity = compareSpecificity(ruleApplied.specificity, specificity);
+            }
+            else {
+              // when resolving ties for specificity, the rule that was declared last
+              // will take precedence. we can simulate this by adding all new rules
+              // to the front of the list since we are processing the styleSheets in
+              // declared order
+              elStyle.unshift({
+                value: value,
+                styleSheet: href,
+                specificity: specificity,
+                selector: rule.selectorText  // we want the entire selector
+              });
+            }
 
-        // loop through each rule declaration and set the value in computedStyles
-        for (var i = 0, len = rule.style.length; i < len; i++) {
-          declaration = rule.style[i];
-          value = rule.style[declaration];
-
-          el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-
-          // when resolving ties for specificity, the rule that was declared last
-          // will take precedence. we can simulate this by adding all new rules
-          // to the front of the list since we are processing the stylesheets in
-          // declared order
-          el.computedStyles[declaration].unshift({
-            value: value,
-            styleSheet: styleSheet,
-            specificity: specificity,
-            selector: selector
-          });
-
-          // sort declaration styles by specificity (i.e. how the browser would
-          // apply the style)
-          el.computedStyles[declaration].sort(specificitySort);
+            // sort declaration styles by specificity (i.e. how the browser would
+            // apply the style)
+            elStyle.sort(specificitySort);
+          }
         }
       }
-    }
-  }
+    });
+  });
 }
