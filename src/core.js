@@ -55,21 +55,6 @@ function forEachRule(rules, callback, scope) {
 }
 
 /**
- * Return the highest selector specificity.
- * @param {number[]} a
- * @param {number[]} b
- */
-function compareSpecificity(a, b) {
-  for (var i = 0; i < 4; i++) {
-    if (a[i] > b[i]) { return a; }
-    if (b[i] > a[i]) { return b; }
-  }
-
-  // when both specificities tie, it doesn't matter which one is returned
-  return a;
-}
-
-/**
  * Load a styleSheet from a cross domain URL.
  * @param {string} url - The URL of the styleSheet to load.
  * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
