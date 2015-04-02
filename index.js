@@ -203,7 +203,8 @@ function forEachRule(rules, callback, scope) {
 
 /**
  * Return the highest selector specificity.
- * @param {}
+ * @param {number[]} a
+ * @param {number[]} b
  */
 function compareSpecificity(a, b) {
   for (var i = 0; i < 4; i++) {
@@ -254,6 +255,12 @@ function loadCSSCors(url, callback) {
   xhr.send();
 }
 /*jshint -W084 */
+
+/**
+ * Sort a computedStyle by specificity order
+ * @param {object} a
+ * @param {object} b
+ */
 function specificitySort(a, b) {
   return b.specificity[0] - a.specificity[0] ||
          b.specificity[1] - a.specificity[1] ||
