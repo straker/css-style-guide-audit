@@ -145,6 +145,48 @@ if (typeof exports !== 'undefined') {
 	exports.calculate = SPECIFICITY.calculate;
 }
 
+/*jshint unused:false */
+/* global console */
+
+/**
+ * Load a styleSheet from a cross domain URL.
+ * @param {string} url - The URL of the styleSheet to load.
+ * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
+ */
+function loadCSSCors(url, callback) {
+  var XHR = XMLHttpRequest;
+  var hasCred = false;
+  try {hasCred = XHR && ('withCredentials' in (new XHR()));} catch(e) {}
+
+  if (!hasCred) {
+    console.error('CORS not supported');
+    return;
+  }
+
+  var xhr = new XHR();
+  xhr.open('GET', url);
+  xhr.onload = function() {
+    xhr.onload = xhr.onerror = null;
+    if (xhr.status < 200 || xhr.status >=300) {
+      console.error('style failed to load: ' + url);
+    }
+    else {
+      var styleTag = document.createElement('style');
+      styleTag.appendChild(document.createTextNode(xhr.responseText));
+      document.head.appendChild(styleTag);
+      callback(styleTag);
+
+      // clean up style tag when callback is finished
+      styleTag.remove();
+    }
+  };
+  xhr.onerror = function() {
+    xhr.onload = xhr.onerror = null;
+    console.error('XHR CORS CSS fail:' + url);
+  };
+  xhr.send();
+}
+
 /**
  * Wrapper function for getting a styleSheets rules
  * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
@@ -160,6 +202,7 @@ function getRules(sheet) {
  * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
  * @param {function} callback - Callback function to be called (needed for xhr CORS request)
  */
+var styleSheets = {};  // keep a list of already requested styleSheets so we don't have to request them again
 function getStyleSheetRules(sheet, callback) {
   // only deal with link tags with an href. this avoids problems with injected
   // styles from plugins.
@@ -169,11 +212,24 @@ function getStyleSheetRules(sheet, callback) {
 
   var rules = getRules(sheet);
 
+  // check to see if we've already loaded this styleSheet
+  if (!rules && styleSheets[sheet.href]) {
+    sheet = styleSheets[sheet.href].styleSheet;
+    rules = styleSheets[sheet.href].rules;
+
+    callback(rules, sheet.href);
+  }
   // this is an external styleSheet so we need to request it through CORS
-  if (!rules) {
-    loadCSSCors(sheet.href, function(corsSheet) {
-      callback(getRules(corsSheet.sheet), sheet.href);
-    });
+  else if (!rules) {
+    (function (sheet) {
+      loadCSSCors(sheet.href, function(corsSheet) {
+        styleSheets[sheet.href] = {};
+        styleSheets[sheet.href].styleSheet = corsSheet;
+        styleSheets[sheet.href].rules = getRules(corsSheet.sheet);
+
+        callback(styleSheets[sheet.href].rules, sheet.href);
+      });
+    })(sheet);
   }
   else {
     callback(rules, sheet.href);
@@ -200,45 +256,6 @@ function forEachRule(rules, callback, scope) {
     callback.call(scope, rule, i);
   }
 }
-
-/**
- * Load a styleSheet from a cross domain URL.
- * @param {string} url - The URL of the styleSheet to load.
- * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
- */
-function loadCSSCors(url, callback) {
-  var xhr = XMLHttpRequest;
-  var hasCred = false;
-  try {hasCred = xhr && ('withCredentials' in (new xhr()));} catch(e) {}
-
-  if (!hasCred) {
-    console.error('CORS not supported');
-    return;
-  }
-
-  xhr = new xhr();
-  xhr.open('GET', url);
-  xhr.onload = function() {
-    xhr.onload = xhr.onerror = null;
-    if (xhr.status < 200 || xhr.status >=300) {
-      console.error('style failed to load: ' + url);
-    }
-    else {
-      var styleTag = document.createElement('style');
-      styleTag.appendChild(document.createTextNode(xhr.responseText));
-      document.head.appendChild(styleTag);
-      callback(styleTag);
-
-      // clean up style tag when callback is finished
-      styleTag.remove();
-    }
-  };
-  xhr.onerror = function() {
-    xhr.onload = xhr.onerror = null;
-    console.error('XHR CORS CSS fail:' + url);
-  };
-  xhr.send();
-}
 /**
  * Produce a JSON audit.
 * @param {string|string[]} patternLibrary - href substring that uniquely identifies the pattern library styleSheet(s)
@@ -249,7 +266,105 @@ function loadCSSCors(url, callback) {
  *  auditResults('pattern-lib');
  */
 function auditResults(patternLibrary) {
-  var sheet = document.querySelector('link[href*="' + patternLibrary + '"]');
+  var sheet = document.quer/*jshint -W083 */
+/*jshint -W084 */
+/*jshint unused:false */
+/* global console, getStyleSheetRules, forEachRule */
+
+var audit = {elms: []};
+
+/**
+ * Produce a JSON audit.
+ * @param {string|string[]} patternLibrary - href substring that uniquely identifies the pattern library styleSheet(s)
+ * @param {string|string[]} ignoreSheet - href substring that uniquely identifies any styleSheets that should be ignored in the audit
+ * @example
+ *  // references any styleSheet that contains the text 'pattern-lib'
+ *  // e.g. localhost/css/pattern-lib.css
+ *  // e.g. http://myDomain/styles/pattern-lib-17D8401NDL.css
+ *  auditResults('pattern-lib');
+ */
+function auditResults(patternLibrary, ignoreSheet) {
+  if (!Array.isArray(patternLibrary)) {
+    patternLibrary = [patternLibrary];
+  }
+
+  if (!Array.isArray(ignoreSheet)) {
+    ignoreSheet = [ignoreSheet];
+  }
+
+  // reset previous audit
+  for (var z = 0, elm; elm = audit.elms[z]; z++) {
+    elm.style.background = '';
+    elm.title = '';
+    elm.problems = [];
+  }
+  audit = {elms: []};
+
+  // loop through each provided pattern library
+  var link, sheet, elms, el, declaration, value, elStyle;
+  for (var i = 0, patternLib; patternLib = patternLibrary[i]; i++) {
+    link = document.querySelector('link[href*="' + patternLib + '"]');
+
+    if (!link) {
+      continue;
+    }
+
+    sheet = link.sheet;
+
+    getStyleSheetRules(sheet, function(rules, href) {
+
+      forEachRule(rules, function(rule) {
+
+        try {
+          elms = document.querySelectorAll(rule.selectorText);
+        }
+        catch(e) {
+          return;
+        }
+
+        // loop through each element
+        for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
+          el = elms[j];
+
+          // loop through each rule declaration and check that the pattern library styles
+          // are being applied
+          for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
+            declaration = rule.style[k];
+            value = rule.style[declaration];
+            elStyle = el.computedStyles[declaration];
+
+            if (elStyle[0].styleSheet !== href) {
+              // make sure the styleSheet isn't in the ignore list
+              var ignored = false;
+              for (var x = 0, ignore; ignore = ignoreSheet[x]; x++) {
+                if (elStyle[0].styleSheet.indexOf(ignore) !== -1) {
+                  ignored = true;
+                  break;
+                }
+              }
+
+              if (!ignored) {
+                el.problems = el.problems || [];
+                el.problems.push('Property "' + declaration + '" being overridden by selector "' + elStyle[0].selector + '" from styleSheet ' + elStyle[0].styleSheet + '. Pattern Library value: "' + value + '," Override: "' + elStyle[0].value + '"');
+
+                if (audit.elms.indexOf(el) === -1) {
+                  audit.elms.push(el);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      // change the background color of all elements
+      for (var z = 0, elm; elm = audit.elms[z]; z++) {
+        elm.style.background = 'salmon';
+        elm.title = elm.problems.join('\n\n');
+      }
+
+    });
+  }
+}ySelector('link[href*="' + patternLibrary + '"]');
   var audit = {};
   var elms, el, declaration, value, elStyle;
 
@@ -284,7 +399,10 @@ function auditResults(patternLibrary) {
     });
   });
 }
+/*jshint -W083 */
 /*jshint -W084 */
+/*jshint unused:false */
+/* global getStyleSheetRules, forEachRule, SPECIFICITY */
 
 /**
  * Sort a computedStyle by specificity order
@@ -296,7 +414,8 @@ function specificitySort(a, b) {
   return b.specificity[0] - a.specificity[0] ||
          b.specificity[1] - a.specificity[1] ||
          b.specificity[2] - a.specificity[2] ||
-         b.specificity[3] - a.specificity[3];
+         b.specificity[3] - a.specificity[3] ||
+         b.index - a.index;
 }
 
 /**
@@ -320,7 +439,7 @@ function compareSpecificity(a, b) {
  */
 function parseStyleSheets() {
   var sheets = document.styleSheets;
-  var selectors, selector, styleSheet, specificity, elms, el, declaration, value;
+  var sheet, selectors, selector, specificity, elms, el, declaration, value, elStyle;
 
   // loop through each styleSheet
   for (var i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
@@ -329,72 +448,67 @@ function parseStyleSheets() {
     // TODO: as an async call, this no longer returns the stylesheets in the order in which
     // they are listed. instead, it returns them in the order that they are retrieved from
     // the server.
-    getStyleSheetRules(sheet, function(rules, href) {
+    (function(index) {
+      getStyleSheetRules(sheet, function(rules, href) {
 
-      forEachRule(rules, function(rule) {
-        // deal with each selector individually since each selector can have it's own
-        // level of specificity
-        selectors = rule.selectorText.split(',');
+        forEachRule(rules, function(rule) {
+          // deal with each selector individually since each selector can have it's own
+          // level of specificity
+          selectors = rule.selectorText.split(',');
 
-        for (j = 0; selector = selectors[j]; j++) {
-          specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
+          for (var j = 0; selector = selectors[j]; j++) {
+            specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
-          try {
-            elms = document.querySelectorAll(selector);
-          }
-          catch(e) {
-            continue;
-          }
+            try {
+              elms = document.querySelectorAll(selector);
+            }
+            catch(e) {
+              continue;
+            }
 
-          // loop through each element and set their computedStyles property
-          for (var k = 0, elmsLength = elms.length; k < elmsLength; k++) {
-            el = elms[k];
-            el.computedStyles = el.computedStyles || {};
+            // loop through each element and set their computedStyles property
+            for (var k = 0, elmsLength = elms.length; k < elmsLength; k++) {
+              el = elms[k];
+              el.computedStyles = el.computedStyles || {};
 
-            // loop through each rule declaration and set the value in computedStyles
-            for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
-              declaration = rule.style[x];
-              value = rule.style[declaration];
+              // loop through each rule declaration and set the value in computedStyles
+              for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
+                declaration = rule.style[x];
+                value = rule.style[declaration];
 
-              el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-              elStyle = el.computedStyles[declaration];
+                el.computedStyles[declaration] = el.computedStyles[declaration] || [];
+                elStyle = el.computedStyles[declaration];
 
-              if (el.getAttribute('class') === 'filter-products row') {
-                debugger;
-              }
+                // check that this selector isn't already being applied to this element
+                var ruleApplied = false;
+                for (var y = 0, elLength = elStyle.length; y < elLength; y++) {
+                  if (elStyle[y].selector === rule.selectorText &&
+                      elStyle[y].styleSheet === href) {
 
-              // check that this selector isn't already being applied to this element
-              var ruleApplied = false;
-              for (var y = 0, elLength = elStyle.length; y < elLength; y++) {
-                if (elStyle[y].selector === rule.selectorText &&
-                    elStyle[y].styleSheet === href) {
-
-                  elStyle[y].specificity = compareSpecificity(elStyle[y].specificity, specificity);
-                  ruleApplied = true;
-                  break;
+                    elStyle[y].specificity = compareSpecificity(elStyle[y].specificity, specificity);
+                    ruleApplied = true;
+                    break;
+                  }
                 }
-              }
 
-              if (!ruleApplied) {
-                // when resolving ties for specificity, the rule that was declared last
-                // will take precedence. we can simulate this by adding all new rules
-                // to the front of the list since we are processing the styleSheets in
-                // declared order
-                elStyle.unshift({
-                  value: value,
-                  styleSheet: href,
-                  specificity: specificity,
-                  selector: rule.selectorText  // we want the entire selector
-                });
-              }
+                if (!ruleApplied) {
+                  elStyle.push({
+                    value: value,
+                    styleSheet: href,
+                    specificity: specificity,
+                    selector: rule.selectorText,  // we want the entire selector
+                    index: index  // order of the stylesheet for resolving specificity ties
+                  });
+                }
 
-              // sort declaration styles by specificity (i.e. how the browser would
-              // apply the style)
-              elStyle.sort(specificitySort);
+                // sort declaration styles by specificity (i.e. how the browser would
+                // apply the style)
+                elStyle.sort(specificitySort);
+              }
             }
           }
-        }
+        });
       });
-    });
+    })(i);
   }
 }
