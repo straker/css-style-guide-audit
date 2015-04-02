@@ -67,7 +67,6 @@ function getStyleSheetRules(sheet, callback) {
 
   // check to see if we've already loaded this styleSheet
   if (!rules && styleSheets[sheet.href]) {
-    sheet = styleSheets[sheet.href].styleSheet;
     rules = styleSheets[sheet.href].rules;
 
     callback(rules, sheet.href);
@@ -77,7 +76,7 @@ function getStyleSheetRules(sheet, callback) {
     (function (sheet) {
       loadCSSCors(sheet.href, function(corsSheet) {
         styleSheets[sheet.href] = {};
-        styleSheets[sheet.href].styleSheet = corsSheet;
+        styleSheets[sheet.href].styleSheet = corsSheet.sheet;
         styleSheets[sheet.href].rules = getRules(corsSheet.sheet);
 
         callback(styleSheets[sheet.href].rules, sheet.href);
