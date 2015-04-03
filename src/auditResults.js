@@ -91,7 +91,7 @@ function auditResults(patternLibrary, ignoreSheet) {
       // change the background color of all elements
       for (var z = 0, elm; elm = audit.elms[z]; z++) {
         elm.style.background = 'salmon';
-        elm.title = elm.problems.join('\n\n');
+        elm.setAttribute('data-style-audit', 'property-override');
       }
 
     });

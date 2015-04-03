@@ -44,9 +44,8 @@ function parseStyleSheets() {
   for (var i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
     sheet = sheets[i];
 
-    // TODO: as an async call, this no longer returns the stylesheets in the order in which
-    // they are listed. instead, it returns them in the order that they are retrieved from
-    // the server.
+    // create a closure for the styleSheet order so that we can resolve specificity ties
+    // by the order in which the styleSheets are loaded on the page
     (function(index) {
       getStyleSheetRules(sheet, function(rules, href) {
 
