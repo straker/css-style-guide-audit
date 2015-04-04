@@ -77,7 +77,16 @@ function auditResults(patternLibrary, ignoreSheet) {
 
               if (!ignored) {
                 el.problems = el.problems || [];
-                el.problems.push('Property "' + declaration + '" being overridden by selector "' + elStyle[0].selector + '" from styleSheet ' + elStyle[0].styleSheet + '. Pattern Library value: "' + value + '," Override: "' + elStyle[0].value + '"');
+                el.problems.push({
+                  type: 'property',
+                  declaration: declaration,
+                  selector: elStyle[0].selector,
+                  styleSheet: elStyle[0].styleSheet,
+                  originalValue: value,
+                  overrideValue: elStyle[0].value
+                });
+
+                  // 'Property "' + declaration + '" being overridden by selector "' + elStyle[0].selector + '" from styleSheet ' + elStyle[0].styleSheet + '. Pattern Library value: "' + value + '," Override: "' + elStyle[0].value + '"');
 
                 if (audit.elms.indexOf(el) === -1) {
                   audit.elms.push(el);
