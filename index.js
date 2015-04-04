@@ -255,6 +255,82 @@ function forEachRule(rules, callback, scope) {
     callback.call(scope, rule, i);
   }
 }
+
+/**
+ * Prevents a child element from scrolling a parent element (aka document).
+ * @param {Element} element - Scrolling element.
+ * @see http://codepen.io/Merri/pen/nhijD/
+ */
+function preventParentScroll(element) {
+  var html = document.getElementsByTagName('html')[0],
+      htmlTop = 0,
+      htmlBlockScroll = 0,
+      minDeltaY,
+      // this is where you put all your logic
+      wheelHandler = function (e) {
+        // do not prevent scrolling if element can't scroll
+        if (element.scrollHeight <= element.clientHeight) {
+          return;
+        }
+
+        // normalize Y delta
+        if (minDeltaY > Math.abs(e.deltaY) || !minDeltaY) {
+          minDeltaY = Math.abs(e.deltaY);
+        }
+
+        // prevent other wheel events and bubbling in general
+        if(e.stopPropagation) {
+          e.stopPropagation();
+        } else {
+          e.cancelBubble = true;
+        }
+
+        // most often you want to prevent default scrolling behavior (full page scroll!)
+        if( (e.deltaY < 0 && element.scrollTop === 0) || (e.deltaY > 0 && element.scrollHeight === element.scrollTop + element.clientHeight) ) {
+          if(e.preventDefault) {
+            e.preventDefault();
+          } else {
+            e.returnValue = false;
+          }
+        } else {
+          // safeguard against fast scroll in IE and mac
+          if(!htmlBlockScroll) {
+            htmlTop = html.scrollTop;
+          }
+          htmlBlockScroll++;
+          // even IE11 updates scrollTop after the wheel event :/
+          setTimeout(function() {
+            htmlBlockScroll--;
+            if(!htmlBlockScroll && html.scrollTop !== htmlTop) {
+              html.scrollTop = htmlTop;
+            }
+          }, 0);
+        }
+      },
+      // here we do only compatibility stuff
+      mousewheelCompatibility = function (e) {
+        // no need to convert more than this, we normalize the value anyway
+        e.deltaY = -e.wheelDelta;
+        // and then call our main handler
+        wheelHandler(e);
+      };
+
+  // do not add twice!
+  if(element.removeWheelListener) {
+    return;
+  }
+
+  if (element.addEventListener) {
+    element.addEventListener('wheel', wheelHandler, false);
+    element.addEventListener('mousewheel', mousewheelCompatibility, false);
+    // expose a remove method
+    element.removeWheelListener = function() {
+      element.removeEventListener('wheel', wheelHandler, false);
+      element.removeEventListener('mousewheel', mousewheelCompatibility, false);
+      element.removeWheelListener = undefined;
+    };
+  }
+}
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
@@ -335,15 +411,10 @@ function auditResults(patternLibrary, ignoreSheet) {
               if (!ignored) {
                 el.problems = el.problems || [];
                 el.problems.push({
-                  type: 'property',
-                  declaration: declaration,
+                  type: 'property-override',
                   selector: elStyle[0].selector,
-                  styleSheet: elStyle[0].styleSheet,
-                  originalValue: value,
-                  overrideValue: elStyle[0].value
+                  description: declaration + ' overridden by ' + elStyle[0].styleSheet + '. Original value: ' + value + '; Current value: ' + elStyle[0].value
                 });
-
-                  // 'Property "' + declaration + '" being overridden by selector "' + elStyle[0].selector + '" from styleSheet ' + elStyle[0].styleSheet + '. Pattern Library value: "' + value + '," Override: "' + elStyle[0].value + '"');
 
                 if (audit.elms.indexOf(el) === -1) {
                   audit.elms.push(el);
@@ -356,15 +427,37 @@ function auditResults(patternLibrary, ignoreSheet) {
 
       // change the background color of all elements
       for (var z = 0, elm; elm = audit.elms[z]; z++) {
-        elm.style.background = 'salmon';
         elm.setAttribute('data-style-audit', 'property-override');
       }
 
     });
   }
 }
+
+// allow custom rules to be audited
+var auditRules = [{
+  selector: '.app-search a[href*="javascript"]',
+  description: 'Anchor tags that do not navigate should be buttons.'
+},
+{
+  selector: '.fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
+  description: 'Style guide heading classes should not be applied to non-heading elements.'
+}];
+
+for (var i = 0; i < auditRules.length; i++) {
+  var elms = document.querySelectorAll(auditRules[i].selector);
+
+  for (var j = 0; j < elms.length; j++) {
+    elms[j].problems = elms[j].problems || [];
+    elms[j].problems.push({
+      type: 'custom-rule',
+      selector: auditRules[i].selector,
+      description: auditRules[i].description
+    });
+  }
+}
 /*jshint -W084 */
-/* global console */
+/* global console, preventParentScroll */
 
 var trayHeight = 200;
 
@@ -377,6 +470,23 @@ document.body.appendChild(push);
 var auditTool = document.createElement('div');
 auditTool.setAttribute('class', 'audit-results');
 document.body.appendChild(auditTool);
+preventParentScroll(auditTool);
+
+// create a title for the tray
+var code = document.createElement('code');
+code.setAttribute('class', 'language-markup');
+var pre = document.createElement('pre');
+pre.appendChild(code);
+
+var title = document.createElement('div');
+title.setAttribute('class', 'audit-results__title');
+title.appendChild(pre);
+auditTool.appendChild(title);
+
+// create a container for the results
+var container = document.createElement('div');
+container.setAttribute('class', 'audit-results__body');
+auditTool.appendChild(container);
 
 // append a styles for the tray to body
 var trayStyle = document.createElement('style');
@@ -390,6 +500,7 @@ var trayCss = '' +
     'background: white;' +
     'border-top: 0 solid black;' +
     'transition: bottom 300ms, border 300ms;' +
+    'overflow-y: auto;' +
   '}' +
   'body.open-audit .audit-results {' +
     'bottom: 0;' +
@@ -401,21 +512,63 @@ var trayCss = '' +
   '}' +
   'body.open-audit .audit-push-results {' +
     'height: ' + trayHeight + 'px;' +
+  '}' +
+  '.audit-results__body {' +
+    'padding: 1em;' +
+  '}' +
+  // override bootstrap and prism styles
+  '.audit-results pre[class*=language-] {' +
+    'border-radius: 0;' +
+    'margin: 0;' +
+  '}' +
+  '.audit-results pre[class*=language-]>code[data-language]::before {' +
+    'display: none;' +
+  '}' +
+  // make all audit elements a different color
+  '[data-style-audit] {' +
+    'background: salmon !important;' +
   '}';
 trayStyle.appendChild(document.createTextNode(trayCss));
 document.head.appendChild(trayStyle);
 
+// load prism.js syntax highlighting
+var prismJS = document.createElement('script');
+prismJS.setAttribute('async', true);
+prismJS.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.js';
+document.body.appendChild(prismJS);
+var prismCSS = document.createElement('link');
+prismCSS.setAttribute('rel', 'stylesheet');
+prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.css';
+document.head.appendChild(prismCSS);
+
+/**
+ * Escape <, >, and "" for output.
+ * @param {string} str - String of HTML to escape.
+ * @returns {string}
+ * @see http://stackoverflow.com/questions/5406373/how-can-i-display-html-tags-inside-and-html-document
+ */
+function escapeHTML(str) {
+  return str.replace(/>/g,'&gt;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+
 /**
  * Open the audit tool tray
+ * @param {Element} el - Element to view audit results on.
  */
 function openAuditTool(el) {
-  console.log(el);
   document.body.classList.add('open-audit');
 
   // remove all previous results
-  while (auditTool.firstChild) {
-    auditTool.removeChild(el.firstChild);
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
   }
+
+  // set the title
+  var wrap = document.createElement('div');
+  wrap.appendChild(el.cloneNode(false));
+  wrap.firstChild.removeAttribute('data-style-audit');
+  code.innerHTML = escapeHTML(wrap.innerHTML);
+  Prism.highlightElement(code);
 
   // add audit results to popover
   var frag = document.createDocumentFragment();
@@ -423,11 +576,11 @@ function openAuditTool(el) {
   var li;
   for (var i = 0, result; result = el.problems[i]; i++) {
     li = document.createElement('li');
-    li.textContent = result.declaration + ' overridden by ' + result.styleSheet + '. Original value: ' + result.originalValue + '; Current value: ' + result.overriddenvalue;
+    li.textContent = result.description;
     frag.appendChild(li);
   }
   ul.appendChild(frag);
-  auditTool.appendChild(ul)
+  container.appendChild(ul);
 }
 
 // setup a click handler on all audit elements to bring up a nice tray to display
@@ -447,13 +600,17 @@ document.body.addEventListener('click', function(e) {
       openAuditTool(el);
       return;
     }
+    // if we clicked inside the audit-tool, don't close
+    else if (el.classList.contains('audit-results')) {
+      return;
+    }
   } while (el = el.parentElement);
 
   // if no DOM found, close the tray
   try {
     document.body.classList.remove('open-audit');
   } catch (error) {}
-});
+}, true);
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */

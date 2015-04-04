@@ -78,15 +78,10 @@ function auditResults(patternLibrary, ignoreSheet) {
               if (!ignored) {
                 el.problems = el.problems || [];
                 el.problems.push({
-                  type: 'property',
-                  declaration: declaration,
+                  type: 'property-override',
                   selector: elStyle[0].selector,
-                  styleSheet: elStyle[0].styleSheet,
-                  originalValue: value,
-                  overrideValue: elStyle[0].value
+                  description: declaration + ' overridden by ' + elStyle[0].styleSheet + '. Original value: ' + value + '; Current value: ' + elStyle[0].value
                 });
-
-                  // 'Property "' + declaration + '" being overridden by selector "' + elStyle[0].selector + '" from styleSheet ' + elStyle[0].styleSheet + '. Pattern Library value: "' + value + '," Override: "' + elStyle[0].value + '"');
 
                 if (audit.elms.indexOf(el) === -1) {
                   audit.elms.push(el);
@@ -99,10 +94,32 @@ function auditResults(patternLibrary, ignoreSheet) {
 
       // change the background color of all elements
       for (var z = 0, elm; elm = audit.elms[z]; z++) {
-        elm.style.background = 'salmon';
         elm.setAttribute('data-style-audit', 'property-override');
       }
 
+    });
+  }
+}
+
+// allow custom rules to be audited
+var auditRules = [{
+  selector: '.app-search a[href*="javascript"]',
+  description: 'Anchor tags that do not navigate should be buttons.'
+},
+{
+  selector: '.fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
+  description: 'Style guide heading classes should not be applied to non-heading elements.'
+}];
+
+for (var i = 0; i < auditRules.length; i++) {
+  var elms = document.querySelectorAll(auditRules[i].selector);
+
+  for (var j = 0; j < elms.length; j++) {
+    elms[j].problems = elms[j].problems || [];
+    elms[j].problems.push({
+      type: 'custom-rule',
+      selector: auditRules[i].selector,
+      description: auditRules[i].description
     });
   }
 }

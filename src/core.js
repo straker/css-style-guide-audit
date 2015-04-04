@@ -108,3 +108,79 @@ function forEachRule(rules, callback, scope) {
     callback.call(scope, rule, i);
   }
 }
+
+/**
+ * Prevents a child element from scrolling a parent element (aka document).
+ * @param {Element} element - Scrolling element.
+ * @see http://codepen.io/Merri/pen/nhijD/
+ */
+function preventParentScroll(element) {
+  var html = document.getElementsByTagName('html')[0],
+      htmlTop = 0,
+      htmlBlockScroll = 0,
+      minDeltaY,
+      // this is where you put all your logic
+      wheelHandler = function (e) {
+        // do not prevent scrolling if element can't scroll
+        if (element.scrollHeight <= element.clientHeight) {
+          return;
+        }
+
+        // normalize Y delta
+        if (minDeltaY > Math.abs(e.deltaY) || !minDeltaY) {
+          minDeltaY = Math.abs(e.deltaY);
+        }
+
+        // prevent other wheel events and bubbling in general
+        if(e.stopPropagation) {
+          e.stopPropagation();
+        } else {
+          e.cancelBubble = true;
+        }
+
+        // most often you want to prevent default scrolling behavior (full page scroll!)
+        if( (e.deltaY < 0 && element.scrollTop === 0) || (e.deltaY > 0 && element.scrollHeight === element.scrollTop + element.clientHeight) ) {
+          if(e.preventDefault) {
+            e.preventDefault();
+          } else {
+            e.returnValue = false;
+          }
+        } else {
+          // safeguard against fast scroll in IE and mac
+          if(!htmlBlockScroll) {
+            htmlTop = html.scrollTop;
+          }
+          htmlBlockScroll++;
+          // even IE11 updates scrollTop after the wheel event :/
+          setTimeout(function() {
+            htmlBlockScroll--;
+            if(!htmlBlockScroll && html.scrollTop !== htmlTop) {
+              html.scrollTop = htmlTop;
+            }
+          }, 0);
+        }
+      },
+      // here we do only compatibility stuff
+      mousewheelCompatibility = function (e) {
+        // no need to convert more than this, we normalize the value anyway
+        e.deltaY = -e.wheelDelta;
+        // and then call our main handler
+        wheelHandler(e);
+      };
+
+  // do not add twice!
+  if(element.removeWheelListener) {
+    return;
+  }
+
+  if (element.addEventListener) {
+    element.addEventListener('wheel', wheelHandler, false);
+    element.addEventListener('mousewheel', mousewheelCompatibility, false);
+    // expose a remove method
+    element.removeWheelListener = function() {
+      element.removeEventListener('wheel', wheelHandler, false);
+      element.removeEventListener('mousewheel', mousewheelCompatibility, false);
+      element.removeWheelListener = undefined;
+    };
+  }
+}
