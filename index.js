@@ -331,12 +331,25 @@ function preventParentScroll(element) {
     };
   }
 }
+
+/**
+ * Convert rgb values from the stylesheet to hex.
+ * @param {number} r - Red value.
+ * @param {number} g - Green value.
+ * @param {number} b - Blue value.
+ * @returns {string}
+ * @see http://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+ */
+function rgbToHex(r, g, b) {
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
 /* global console, getStyleSheetRules, forEachRule */
 
 var audit = {elms: []};
+var rgbValues = /([0-9]){1,3}/g;
 
 /**
  * Produce a JSON audit.
@@ -410,10 +423,28 @@ function auditResults(patternLibrary, ignoreSheet) {
 
               if (!ignored) {
                 el.problems = el.problems || [];
+
+                var originalValue;
+                var overrideValue;
+                // convert rgb values to hex, but ignore any rgba values
+                if (value.indexOf('rgb(') !== -1) {
+                  originalValue = rgbToHex.apply(this, value.match(rgbValues).map(Number));
+                }
+                else {
+                  originalValue = value;
+                }
+
+                if (elStyle[0].value.indexOf('rgb(') !== -1) {
+                  overrideValue = rgbToHex.apply(this, elStyle[0].value.match(rgbValues).map(Number));
+                }
+                else {
+                  overrideValue = elStyle[0].value;
+                }
+
                 el.problems.push({
                   type: 'property-override',
                   selector: elStyle[0].selector,
-                  description: declaration + ' overridden by ' + elStyle[0].styleSheet + '. Original value: ' + value + '; Current value: ' + elStyle[0].value
+                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.'
                 });
 
                 if (audit.elms.indexOf(el) === -1) {
@@ -436,11 +467,13 @@ function auditResults(patternLibrary, ignoreSheet) {
 
 // allow custom rules to be audited
 var auditRules = [{
-  selector: '.app-search a[href*="javascript"]',
+  type: '',
+  selector: 'a[href^="javascript"], a[href="#"]',
   description: 'Anchor tags that do not navigate should be buttons.'
 },
 {
-  selector: '.fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
+  type: '',
+  selector: '.fs-h1:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h2:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h3:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h4:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
   description: 'Style guide heading classes should not be applied to non-heading elements.'
 }];
 
@@ -450,7 +483,7 @@ for (var i = 0; i < auditRules.length; i++) {
   for (var j = 0; j < elms.length; j++) {
     elms[j].problems = elms[j].problems || [];
     elms[j].problems.push({
-      type: 'custom-rule',
+      type: auditRules[i].type,
       selector: auditRules[i].selector,
       description: auditRules[i].description
     });
@@ -559,9 +592,7 @@ function openAuditTool(el) {
   document.body.classList.add('open-audit');
 
   // remove all previous results
-  while (container.firstChild) {
-    container.removeChild(container.firstChild);
-  }
+  container.innerHTML = '';
 
   // set the title
   var wrap = document.createElement('div');
@@ -570,13 +601,13 @@ function openAuditTool(el) {
   code.innerHTML = escapeHTML(wrap.innerHTML);
   Prism.highlightElement(code);
 
-  // add audit results to popover
+  // add audit results to container
   var frag = document.createDocumentFragment();
   var ul = document.createElement('ul');
   var li;
   for (var i = 0, result; result = el.problems[i]; i++) {
     li = document.createElement('li');
-    li.textContent = result.description;
+    li.innerHTML = '<label><input type="checkbox"/>' + result.description + '</label>';
     frag.appendChild(li);
   }
   ul.appendChild(frag);
@@ -595,7 +626,6 @@ document.body.addEventListener('click', function(e) {
   // walk the DOM tree looking for an element with the data-style-audit attribute
   do {
     if (el.getAttribute('data-style-audit')) {
-      console.log('click');
       e.preventDefault();
       openAuditTool(el);
       return;

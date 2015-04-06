@@ -101,9 +101,7 @@ function openAuditTool(el) {
   document.body.classList.add('open-audit');
 
   // remove all previous results
-  while (container.firstChild) {
-    container.removeChild(container.firstChild);
-  }
+  container.innerHTML = '';
 
   // set the title
   var wrap = document.createElement('div');
@@ -112,13 +110,13 @@ function openAuditTool(el) {
   code.innerHTML = escapeHTML(wrap.innerHTML);
   Prism.highlightElement(code);
 
-  // add audit results to popover
+  // add audit results to container
   var frag = document.createDocumentFragment();
   var ul = document.createElement('ul');
   var li;
   for (var i = 0, result; result = el.problems[i]; i++) {
     li = document.createElement('li');
-    li.textContent = result.description;
+    li.innerHTML = '<label><input type="checkbox"/>' + result.description + '</label>';
     frag.appendChild(li);
   }
   ul.appendChild(frag);
@@ -137,7 +135,6 @@ document.body.addEventListener('click', function(e) {
   // walk the DOM tree looking for an element with the data-style-audit attribute
   do {
     if (el.getAttribute('data-style-audit')) {
-      console.log('click');
       e.preventDefault();
       openAuditTool(el);
       return;

@@ -184,3 +184,15 @@ function preventParentScroll(element) {
     };
   }
 }
+
+/**
+ * Convert rgb values from the stylesheet to hex.
+ * @param {number} r - Red value.
+ * @param {number} g - Green value.
+ * @param {number} b - Blue value.
+ * @returns {string}
+ * @see http://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+ */
+function rgbToHex(r, g, b) {
+  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
