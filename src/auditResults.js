@@ -1,7 +1,7 @@
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global console, getStyleSheetRules, forEachRule */
+/* global console, getStyleSheetRules, forEachRule, rgbToHex, push */
 
 var audit = {elms: []};
 var rgbValues = /([0-9]){1,3}/g;
@@ -10,13 +10,14 @@ var rgbValues = /([0-9]){1,3}/g;
  * Produce a JSON audit.
  * @param {string|string[]} patternLibrary - href substring that uniquely identifies the pattern library styleSheet(s)
  * @param {string|string[]} ignoreSheet - href substring that uniquely identifies any styleSheets that should be ignored in the audit
+ * @param {object[]} customRules - Custom rules to be audited.
  * @example
  *  // references any styleSheet that contains the text 'pattern-lib'
  *  // e.g. localhost/css/pattern-lib.css
  *  // e.g. http://myDomain/styles/pattern-lib-17D8401NDL.css
  *  auditResults('pattern-lib');
  */
-function auditResults(patternLibrary, ignoreSheet) {
+function auditResults(patternLibrary, ignoreSheet, customRules) {
   if (!Array.isArray(patternLibrary)) {
     patternLibrary = [patternLibrary];
   }
@@ -70,7 +71,7 @@ function auditResults(patternLibrary, ignoreSheet) {
               // make sure the styleSheet isn't in the ignore list
               var ignored = false;
               for (var x = 0, ignore; ignore = ignoreSheet[x]; x++) {
-                if (elStyle[0].styleSheet.indexOf(ignore) !== -1) {
+                if (elStyle[0].styleSheet && elStyle[0].styleSheet.indexOf(ignore) !== -1) {
                   ignored = true;
                   break;
                 }
@@ -99,7 +100,7 @@ function auditResults(patternLibrary, ignoreSheet) {
                 el.problems.push({
                   type: 'property-override',
                   selector: elStyle[0].selector,
-                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.'
+                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
                 });
 
                 if (audit.elms.indexOf(el) === -1) {
@@ -118,29 +119,20 @@ function auditResults(patternLibrary, ignoreSheet) {
 
     });
   }
-}
 
-// allow custom rules to be audited
-var auditRules = [{
-  type: '',
-  selector: 'a[href^="javascript"], a[href="#"]',
-  description: 'Anchor tags that do not navigate should be buttons.'
-},
-{
-  type: '',
-  selector: '.fs-h1:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h2:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h3:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h4:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
-  description: 'Style guide heading classes should not be applied to non-heading elements.'
-}];
+  for (i = 0; i < customRules.length; i++) {
+    elms = document.querySelectorAll(customRules[i].selector);
 
-for (var i = 0; i < auditRules.length; i++) {
-  var elms = document.querySelectorAll(auditRules[i].selector);
-
-  for (var j = 0; j < elms.length; j++) {
-    elms[j].problems = elms[j].problems || [];
-    elms[j].problems.push({
-      type: auditRules[i].type,
-      selector: auditRules[i].selector,
-      description: auditRules[i].description
-    });
+    for (var j = 0; j < elms.length; j++) {
+      elms[j].problems = elms[j].problems || [];
+      elms[j].problems.push({
+        type: customRules[i].type,
+        selector: customRules[i].selector,
+        description: customRules[i].description
+      });
+      elms[j].setAttribute('data-style-audit', 'custom-rule');
+    }
   }
 }
+
+window.auditResults = auditResults;

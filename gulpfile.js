@@ -16,9 +16,18 @@ gulp.task('lint', function() {
 });
 
 gulp.task('scripts', function() {
-  return gulp.src(['node_modules/specificity/specificity.js', 'src/core.js', 'src/*.js'])
+  return gulp.src(['src/core.js', 'node_modules/specificity/specificity.js', 'src/*.js', 'src/final.js'])
     .pipe(concat('index.js'))
+    .pipe(concat.header('(function(window, document) {\n\'use strict\';\n'))
+    .pipe(concat.footer('\n\n})(window, document);'))
     .pipe(size())
+    .pipe(gulp.dest('.'))
+    .pipe(rename('index.min.js'))
+    .pipe(uglify())
+    .pipe(size())
+    .pipe(gulp.dest('.'))
+    .pipe(rename('bookmarklet.js'))
+    .pipe(concat.header('javascript:'))
     .pipe(gulp.dest('.'));
 });
 

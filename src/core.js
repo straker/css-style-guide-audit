@@ -1,6 +1,179 @@
 /*jshint unused:false */
 /* global console */
 
+var trayHeight = 200;
+
+// create a div that will push the content out of the way of the results tray
+var push = document.createElement('div');
+push.classList.add('audit-push-results');
+push.setAttribute('data-loading', 'true');
+
+// set the style on the element so we don't have to wait for the styles to be processed
+// before seeing the loading screen
+push.innerHTML = '<div style="' +
+    'background-color: #fff;' +
+    'border-radius: 100%;' +
+    'margin: 2px;' +
+    '-webkit-animation-fill-mode: both;' +
+    'animation-fill-mode: both;' +
+    'border: 3px solid #fff;' +
+    'border-bottom-color: transparent;' +
+    'height: 100px;' +
+    'width: 100px;' +
+    'background: transparent !important;' +
+    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
+    'animation: rotate 0.75s 0s linear infinite;' +
+    'position: absolute;' +
+    'top: 50%;' +
+    'left: 50%;' +
+  '"></div>';
+
+push.style.position = 'fixed';
+push.style.left = 0;
+push.style.right = 0;
+push.style.top = 0;
+push.style.bottom = 0;
+push.style.background = 'rgba(166,166,166,.6)';
+push.style.zIndex = 10000000;
+push.style.height = 'auto';
+
+document.body.appendChild(push);
+
+// append the tray to body
+var auditTool = document.createElement('div');
+auditTool.setAttribute('class', 'audit-results');
+document.body.appendChild(auditTool);
+preventParentScroll(auditTool);
+
+// create a title for the tray
+var code = document.createElement('code');
+code.setAttribute('class', 'language-markup');
+var pre = document.createElement('pre');
+pre.appendChild(code);
+
+var title = document.createElement('div');
+title.setAttribute('class', 'audit-results__title');
+title.appendChild(pre);
+auditTool.appendChild(title);
+
+// create a container for the results
+var container = document.createElement('div');
+container.setAttribute('class', 'audit-results__body');
+auditTool.appendChild(container);
+
+// append a styles for the tray to body
+var trayStyle = document.createElement('style');
+var trayCss = '' +
+  '.audit-results {' +
+    'position: fixed;' +
+    'bottom: -' + trayHeight + 'px;' +
+    'left: 0;' +
+    'right: 0;' +
+    'height: ' + trayHeight + 'px;' +
+    'background: white;' +
+    'border-top: 0 solid black;' +
+    'transition: bottom 300ms, border 300ms;' +
+    'overflow-y: auto;' +
+  '}' +
+  'body.open-audit .audit-results {' +
+    'bottom: 0;' +
+    'border-top-width: 1px;' +
+  '}' +
+  '.audit-push-results {' +
+    'height: 0;' +
+    'transition: height 300ms;' +
+  '}' +
+  '.audit-push-results[data-loading] {' +
+    'position: fixed;' +
+    'left: 0;' +
+    'right: 0;' +
+    'top: 0;' +
+    'bottom: 0;' +
+    'background: rgba(166,166,166,.6);' +
+    'height: auto;' +
+    'z-index: 10000000;' +
+    'height: auto !important' +
+  '}' +
+  '.audit-push-results[data-loading] div {' +
+    'background-color: #fff;' +
+    'border-radius: 100%;' +
+    'margin: 2px;' +
+    '-webkit-animation-fill-mode: both;' +
+    'animation-fill-mode: both;' +
+    'border: 3px solid #fff;' +
+    'border-bottom-color: transparent;' +
+    'height: 100px;' +
+    'width: 100px;' +
+    'background: transparent !important;' +
+    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
+    'animation: rotate 0.75s 0s linear infinite;' +
+    'position: absolute;' +
+    'top: 50%;' +
+    'left: 50%;' +
+  '}' +
+  'body.open-audit .audit-push-results {' +
+    'height: ' + trayHeight + 'px;' +
+  '}' +
+  '.audit-results__body {' +
+    'padding: 1em;' +
+  '}' +
+  // TODO: add back when I have a way to ignore results
+  // '.audit-results__body ul {' +
+  //   'margin: 0;' +
+  // '}' +
+  '.audit-results__body li {' +
+    'margin-bottom: 10px;' +
+    // TODO: add back when I have a way to ignore results
+    // 'display: table;' +
+  '}' +
+  // TODO: add back when I have a way to ignore results
+  // '.audit-results__body div {' +
+  //   'display: table-cell;' +
+  // '}' +
+  '.audit-results__body div:first-child {' +  // TODO: remove when I have a way to ignore results
+    'display: none;' +
+  '}' +
+  '.audit-results__body input[type="checkbox"] {' +
+    'float: none;' +
+    'margin: 0;' +
+    'padding: 0;' +
+  '}' +
+  '.audit-results__body label {' +
+    'font-size: 16px;' +
+    'padding-left: 0;' +  // TODO: change back to 10px when I have a way to ignore results
+  '}' +
+  '.audit-results__body code {' +
+    'margin-bottom: 4px;' +
+    'display: inline-block;' +
+  '}' +
+  // override bootstrap and prism styles
+  '.audit-results pre[class*=language-] {' +
+    'border-radius: 0;' +
+    'margin: 0;' +
+  '}' +
+  '.audit-results pre[class*=language-]>code[data-language]::before {' +
+    'display: none;' +
+  '}' +
+  // make all audit elements a different color
+  '[data-style-audit] {' +
+    'background: salmon !important;' +
+    'cursor: pointer !important;' +
+  '}';
+trayStyle.appendChild(document.createTextNode(trayCss));
+document.head.appendChild(trayStyle);
+
+// load prism.js syntax highlighting
+if (!window.Prism) {
+  var prismJS = document.createElement('script');
+  prismJS.setAttribute('async', true);
+  prismJS.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.js';
+  document.body.appendChild(prismJS);
+  var prismCSS = document.createElement('link');
+  prismCSS.setAttribute('rel', 'stylesheet');
+  prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.css';
+  document.head.appendChild(prismCSS);
+}
+
 /**
  * Load a styleSheet from a cross domain URL.
  * @param {string} url - The URL of the styleSheet to load.
@@ -57,12 +230,6 @@ function getRules(sheet) {
  */
 var styleSheets = {};  // keep a list of already requested styleSheets so we don't have to request them again
 function getStyleSheetRules(sheet, callback) {
-  // only deal with link tags with an href. this avoids problems with injected
-  // styles from plugins.
-  if (!sheet.href) {
-    return;
-  }
-
   var rules = getRules(sheet);
 
   // check to see if we've already loaded this styleSheet
@@ -194,5 +361,5 @@ function preventParentScroll(element) {
  * @see http://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
  */
 function rgbToHex(r, g, b) {
-  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }

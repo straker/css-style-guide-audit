@@ -1,3 +1,370 @@
+(function(window, document) {
+'use strict';
+/*jshint unused:false */
+/* global console */
+
+var trayHeight = 200;
+
+// create a div that will push the content out of the way of the results tray
+var push = document.createElement('div');
+push.classList.add('audit-push-results');
+push.setAttribute('data-loading', 'true');
+
+// set the style on the element so we don't have to wait for the styles to be processed
+// before seeing the loading screen
+push.innerHTML = '<div style="' +
+    'background-color: #fff;' +
+    'border-radius: 100%;' +
+    'margin: 2px;' +
+    '-webkit-animation-fill-mode: both;' +
+    'animation-fill-mode: both;' +
+    'border: 3px solid #fff;' +
+    'border-bottom-color: transparent;' +
+    'height: 100px;' +
+    'width: 100px;' +
+    'background: transparent !important;' +
+    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
+    'animation: rotate 0.75s 0s linear infinite;' +
+    'position: absolute;' +
+    'top: 50%;' +
+    'left: 50%;' +
+  '"></div>';
+
+push.style.position = 'fixed';
+push.style.left = 0;
+push.style.right = 0;
+push.style.top = 0;
+push.style.bottom = 0;
+push.style.background = 'rgba(166,166,166,.6)';
+push.style.zIndex = 10000000;
+push.style.height = 'auto';
+
+document.body.appendChild(push);
+
+// append the tray to body
+var auditTool = document.createElement('div');
+auditTool.setAttribute('class', 'audit-results');
+document.body.appendChild(auditTool);
+preventParentScroll(auditTool);
+
+// create a title for the tray
+var code = document.createElement('code');
+code.setAttribute('class', 'language-markup');
+var pre = document.createElement('pre');
+pre.appendChild(code);
+
+var title = document.createElement('div');
+title.setAttribute('class', 'audit-results__title');
+title.appendChild(pre);
+auditTool.appendChild(title);
+
+// create a container for the results
+var container = document.createElement('div');
+container.setAttribute('class', 'audit-results__body');
+auditTool.appendChild(container);
+
+// append a styles for the tray to body
+var trayStyle = document.createElement('style');
+var trayCss = '' +
+  '.audit-results {' +
+    'position: fixed;' +
+    'bottom: -' + trayHeight + 'px;' +
+    'left: 0;' +
+    'right: 0;' +
+    'height: ' + trayHeight + 'px;' +
+    'background: white;' +
+    'border-top: 0 solid black;' +
+    'transition: bottom 300ms, border 300ms;' +
+    'overflow-y: auto;' +
+  '}' +
+  'body.open-audit .audit-results {' +
+    'bottom: 0;' +
+    'border-top-width: 1px;' +
+  '}' +
+  '.audit-push-results {' +
+    'height: 0;' +
+    'transition: height 300ms;' +
+  '}' +
+  '.audit-push-results[data-loading] {' +
+    'position: fixed;' +
+    'left: 0;' +
+    'right: 0;' +
+    'top: 0;' +
+    'bottom: 0;' +
+    'background: rgba(166,166,166,.6);' +
+    'height: auto;' +
+    'z-index: 10000000;' +
+    'height: auto !important' +
+  '}' +
+  '.audit-push-results[data-loading] div {' +
+    'background-color: #fff;' +
+    'border-radius: 100%;' +
+    'margin: 2px;' +
+    '-webkit-animation-fill-mode: both;' +
+    'animation-fill-mode: both;' +
+    'border: 3px solid #fff;' +
+    'border-bottom-color: transparent;' +
+    'height: 100px;' +
+    'width: 100px;' +
+    'background: transparent !important;' +
+    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
+    'animation: rotate 0.75s 0s linear infinite;' +
+    'position: absolute;' +
+    'top: 50%;' +
+    'left: 50%;' +
+  '}' +
+  'body.open-audit .audit-push-results {' +
+    'height: ' + trayHeight + 'px;' +
+  '}' +
+  '.audit-results__body {' +
+    'padding: 1em;' +
+  '}' +
+  // TODO: add back when I have a way to ignore results
+  // '.audit-results__body ul {' +
+  //   'margin: 0;' +
+  // '}' +
+  '.audit-results__body li {' +
+    'margin-bottom: 10px;' +
+    // TODO: add back when I have a way to ignore results
+    // 'display: table;' +
+  '}' +
+  // TODO: add back when I have a way to ignore results
+  // '.audit-results__body div {' +
+  //   'display: table-cell;' +
+  // '}' +
+  '.audit-results__body div:first-child {' +  // TODO: remove when I have a way to ignore results
+    'display: none;' +
+  '}' +
+  '.audit-results__body input[type="checkbox"] {' +
+    'float: none;' +
+    'margin: 0;' +
+    'padding: 0;' +
+  '}' +
+  '.audit-results__body label {' +
+    'font-size: 16px;' +
+    'padding-left: 0;' +  // TODO: change back to 10px when I have a way to ignore results
+  '}' +
+  '.audit-results__body code {' +
+    'margin-bottom: 4px;' +
+    'display: inline-block;' +
+  '}' +
+  // override bootstrap and prism styles
+  '.audit-results pre[class*=language-] {' +
+    'border-radius: 0;' +
+    'margin: 0;' +
+  '}' +
+  '.audit-results pre[class*=language-]>code[data-language]::before {' +
+    'display: none;' +
+  '}' +
+  // make all audit elements a different color
+  '[data-style-audit] {' +
+    'background: salmon !important;' +
+    'cursor: pointer !important;' +
+  '}';
+trayStyle.appendChild(document.createTextNode(trayCss));
+document.head.appendChild(trayStyle);
+
+// load prism.js syntax highlighting
+if (!window.Prism) {
+  var prismJS = document.createElement('script');
+  prismJS.setAttribute('async', true);
+  prismJS.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.js';
+  document.body.appendChild(prismJS);
+  var prismCSS = document.createElement('link');
+  prismCSS.setAttribute('rel', 'stylesheet');
+  prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.css';
+  document.head.appendChild(prismCSS);
+}
+
+/**
+ * Load a styleSheet from a cross domain URL.
+ * @param {string} url - The URL of the styleSheet to load.
+ * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
+ */
+function loadCSSCors(url, callback) {
+  var XHR = XMLHttpRequest;
+  var hasCred = false;
+  try {hasCred = XHR && ('withCredentials' in (new XHR()));} catch(e) {}
+
+  if (!hasCred) {
+    console.error('CORS not supported');
+    return;
+  }
+
+  var xhr = new XHR();
+  xhr.open('GET', url);
+  xhr.onload = function() {
+    xhr.onload = xhr.onerror = null;
+    if (xhr.status < 200 || xhr.status >=300) {
+      console.error('style failed to load: ' + url);
+    }
+    else {
+      var styleTag = document.createElement('style');
+      styleTag.appendChild(document.createTextNode(xhr.responseText));
+      document.head.appendChild(styleTag);
+      callback(styleTag);
+
+      // clean up style tag when callback is finished
+      styleTag.remove();
+    }
+  };
+  xhr.onerror = function() {
+    xhr.onload = xhr.onerror = null;
+    console.error('XHR CORS CSS fail:' + url);
+  };
+  xhr.send();
+}
+
+/**
+ * Wrapper function for getting a styleSheets rules
+ * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
+ * @return {CSSRuleList}
+ */
+function getRules(sheet) {
+  return sheet.cssRules || sheet.rules;
+}
+
+/**
+ * Get a styleSheets rules object, taking into account styleSheets that are hosted on
+ * different domains.
+ * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
+ * @param {function} callback - Callback function to be called (needed for xhr CORS request)
+ */
+var styleSheets = {};  // keep a list of already requested styleSheets so we don't have to request them again
+function getStyleSheetRules(sheet, callback) {
+  var rules = getRules(sheet);
+
+  // check to see if we've already loaded this styleSheet
+  if (!rules && styleSheets[sheet.href]) {
+    rules = styleSheets[sheet.href].rules;
+
+    callback(rules, sheet.href);
+  }
+  // this is an external styleSheet so we need to request it through CORS
+  else if (!rules) {
+    (function (sheet) {
+      loadCSSCors(sheet.href, function(corsSheet) {
+        styleSheets[sheet.href] = {};
+        styleSheets[sheet.href].styleSheet = corsSheet.sheet;
+        styleSheets[sheet.href].rules = getRules(corsSheet.sheet);
+
+        callback(styleSheets[sheet.href].rules, sheet.href);
+      });
+    })(sheet);
+  }
+  else {
+    callback(rules, sheet.href);
+  }
+}
+
+/**
+ * Iterate over a list of CSS rules and return only valid rules (e.g. no keyframe or
+ * font-family declarations).
+ * @param {CSSRuleList} rules - CSS rules to parse.
+ * @see http://toddmotto.com/ditch-the-array-foreach-call-nodelist-hack/
+ */
+function forEachRule(rules, callback, scope) {
+  var rule;
+
+  for (var i = 0, len = rules.length; i < len; i++) {
+    rule = rules[i];
+
+    // keyframe and font-family declarations do not have selectorText
+    if (!rule.selectorText) {
+      continue;
+    }
+
+    callback.call(scope, rule, i);
+  }
+}
+
+/**
+ * Prevents a child element from scrolling a parent element (aka document).
+ * @param {Element} element - Scrolling element.
+ * @see http://codepen.io/Merri/pen/nhijD/
+ */
+function preventParentScroll(element) {
+  var html = document.getElementsByTagName('html')[0],
+      htmlTop = 0,
+      htmlBlockScroll = 0,
+      minDeltaY,
+      // this is where you put all your logic
+      wheelHandler = function (e) {
+        // do not prevent scrolling if element can't scroll
+        if (element.scrollHeight <= element.clientHeight) {
+          return;
+        }
+
+        // normalize Y delta
+        if (minDeltaY > Math.abs(e.deltaY) || !minDeltaY) {
+          minDeltaY = Math.abs(e.deltaY);
+        }
+
+        // prevent other wheel events and bubbling in general
+        if(e.stopPropagation) {
+          e.stopPropagation();
+        } else {
+          e.cancelBubble = true;
+        }
+
+        // most often you want to prevent default scrolling behavior (full page scroll!)
+        if( (e.deltaY < 0 && element.scrollTop === 0) || (e.deltaY > 0 && element.scrollHeight === element.scrollTop + element.clientHeight) ) {
+          if(e.preventDefault) {
+            e.preventDefault();
+          } else {
+            e.returnValue = false;
+          }
+        } else {
+          // safeguard against fast scroll in IE and mac
+          if(!htmlBlockScroll) {
+            htmlTop = html.scrollTop;
+          }
+          htmlBlockScroll++;
+          // even IE11 updates scrollTop after the wheel event :/
+          setTimeout(function() {
+            htmlBlockScroll--;
+            if(!htmlBlockScroll && html.scrollTop !== htmlTop) {
+              html.scrollTop = htmlTop;
+            }
+          }, 0);
+        }
+      },
+      // here we do only compatibility stuff
+      mousewheelCompatibility = function (e) {
+        // no need to convert more than this, we normalize the value anyway
+        e.deltaY = -e.wheelDelta;
+        // and then call our main handler
+        wheelHandler(e);
+      };
+
+  // do not add twice!
+  if(element.removeWheelListener) {
+    return;
+  }
+
+  if (element.addEventListener) {
+    element.addEventListener('wheel', wheelHandler, false);
+    element.addEventListener('mousewheel', mousewheelCompatibility, false);
+    // expose a remove method
+    element.removeWheelListener = function() {
+      element.removeEventListener('wheel', wheelHandler, false);
+      element.removeEventListener('mousewheel', mousewheelCompatibility, false);
+      element.removeWheelListener = undefined;
+    };
+  }
+}
+
+/**
+ * Convert rgb values from the stylesheet to hex.
+ * @param {number} r - Red value.
+ * @param {number} g - Green value.
+ * @param {number} b - Blue value.
+ * @returns {string}
+ * @see http://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
+ */
+function rgbToHex(r, g, b) {
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
 /**
  * Calculates the specificity of CSS selectors
  * http://www.w3.org/TR/css3-selectors/#specificity
@@ -145,208 +512,10 @@ if (typeof exports !== 'undefined') {
 	exports.calculate = SPECIFICITY.calculate;
 }
 
-/*jshint unused:false */
-/* global console */
-
-/**
- * Load a styleSheet from a cross domain URL.
- * @param {string} url - The URL of the styleSheet to load.
- * @see http://stackoverflow.com/questions/3211536/accessing-cross-domain-style-sheet-with-cssrules
- */
-function loadCSSCors(url, callback) {
-  var XHR = XMLHttpRequest;
-  var hasCred = false;
-  try {hasCred = XHR && ('withCredentials' in (new XHR()));} catch(e) {}
-
-  if (!hasCred) {
-    console.error('CORS not supported');
-    return;
-  }
-
-  var xhr = new XHR();
-  xhr.open('GET', url);
-  xhr.onload = function() {
-    xhr.onload = xhr.onerror = null;
-    if (xhr.status < 200 || xhr.status >=300) {
-      console.error('style failed to load: ' + url);
-    }
-    else {
-      var styleTag = document.createElement('style');
-      styleTag.appendChild(document.createTextNode(xhr.responseText));
-      document.head.appendChild(styleTag);
-      callback(styleTag);
-
-      // clean up style tag when callback is finished
-      styleTag.remove();
-    }
-  };
-  xhr.onerror = function() {
-    xhr.onload = xhr.onerror = null;
-    console.error('XHR CORS CSS fail:' + url);
-  };
-  xhr.send();
-}
-
-/**
- * Wrapper function for getting a styleSheets rules
- * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
- * @return {CSSRuleList}
- */
-function getRules(sheet) {
-  return sheet.cssRules || sheet.rules;
-}
-
-/**
- * Get a styleSheets rules object, taking into account styleSheets that are hosted on
- * different domains.
- * @param {CSSStyleSheet} sheet - The styleSheet to get the rules from.
- * @param {function} callback - Callback function to be called (needed for xhr CORS request)
- */
-var styleSheets = {};  // keep a list of already requested styleSheets so we don't have to request them again
-function getStyleSheetRules(sheet, callback) {
-  // only deal with link tags with an href. this avoids problems with injected
-  // styles from plugins.
-  if (!sheet.href) {
-    return;
-  }
-
-  var rules = getRules(sheet);
-
-  // check to see if we've already loaded this styleSheet
-  if (!rules && styleSheets[sheet.href]) {
-    rules = styleSheets[sheet.href].rules;
-
-    callback(rules, sheet.href);
-  }
-  // this is an external styleSheet so we need to request it through CORS
-  else if (!rules) {
-    (function (sheet) {
-      loadCSSCors(sheet.href, function(corsSheet) {
-        styleSheets[sheet.href] = {};
-        styleSheets[sheet.href].styleSheet = corsSheet.sheet;
-        styleSheets[sheet.href].rules = getRules(corsSheet.sheet);
-
-        callback(styleSheets[sheet.href].rules, sheet.href);
-      });
-    })(sheet);
-  }
-  else {
-    callback(rules, sheet.href);
-  }
-}
-
-/**
- * Iterate over a list of CSS rules and return only valid rules (e.g. no keyframe or
- * font-family declarations).
- * @param {CSSRuleList} rules - CSS rules to parse.
- * @see http://toddmotto.com/ditch-the-array-foreach-call-nodelist-hack/
- */
-function forEachRule(rules, callback, scope) {
-  var rule;
-
-  for (var i = 0, len = rules.length; i < len; i++) {
-    rule = rules[i];
-
-    // keyframe and font-family declarations do not have selectorText
-    if (!rule.selectorText) {
-      continue;
-    }
-
-    callback.call(scope, rule, i);
-  }
-}
-
-/**
- * Prevents a child element from scrolling a parent element (aka document).
- * @param {Element} element - Scrolling element.
- * @see http://codepen.io/Merri/pen/nhijD/
- */
-function preventParentScroll(element) {
-  var html = document.getElementsByTagName('html')[0],
-      htmlTop = 0,
-      htmlBlockScroll = 0,
-      minDeltaY,
-      // this is where you put all your logic
-      wheelHandler = function (e) {
-        // do not prevent scrolling if element can't scroll
-        if (element.scrollHeight <= element.clientHeight) {
-          return;
-        }
-
-        // normalize Y delta
-        if (minDeltaY > Math.abs(e.deltaY) || !minDeltaY) {
-          minDeltaY = Math.abs(e.deltaY);
-        }
-
-        // prevent other wheel events and bubbling in general
-        if(e.stopPropagation) {
-          e.stopPropagation();
-        } else {
-          e.cancelBubble = true;
-        }
-
-        // most often you want to prevent default scrolling behavior (full page scroll!)
-        if( (e.deltaY < 0 && element.scrollTop === 0) || (e.deltaY > 0 && element.scrollHeight === element.scrollTop + element.clientHeight) ) {
-          if(e.preventDefault) {
-            e.preventDefault();
-          } else {
-            e.returnValue = false;
-          }
-        } else {
-          // safeguard against fast scroll in IE and mac
-          if(!htmlBlockScroll) {
-            htmlTop = html.scrollTop;
-          }
-          htmlBlockScroll++;
-          // even IE11 updates scrollTop after the wheel event :/
-          setTimeout(function() {
-            htmlBlockScroll--;
-            if(!htmlBlockScroll && html.scrollTop !== htmlTop) {
-              html.scrollTop = htmlTop;
-            }
-          }, 0);
-        }
-      },
-      // here we do only compatibility stuff
-      mousewheelCompatibility = function (e) {
-        // no need to convert more than this, we normalize the value anyway
-        e.deltaY = -e.wheelDelta;
-        // and then call our main handler
-        wheelHandler(e);
-      };
-
-  // do not add twice!
-  if(element.removeWheelListener) {
-    return;
-  }
-
-  if (element.addEventListener) {
-    element.addEventListener('wheel', wheelHandler, false);
-    element.addEventListener('mousewheel', mousewheelCompatibility, false);
-    // expose a remove method
-    element.removeWheelListener = function() {
-      element.removeEventListener('wheel', wheelHandler, false);
-      element.removeEventListener('mousewheel', mousewheelCompatibility, false);
-      element.removeWheelListener = undefined;
-    };
-  }
-}
-
-/**
- * Convert rgb values from the stylesheet to hex.
- * @param {number} r - Red value.
- * @param {number} g - Green value.
- * @param {number} b - Blue value.
- * @returns {string}
- * @see http://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
- */
-function rgbToHex(r, g, b) {
-  return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
-}
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global console, getStyleSheetRules, forEachRule */
+/* global console, getStyleSheetRules, forEachRule, rgbToHex, push */
 
 var audit = {elms: []};
 var rgbValues = /([0-9]){1,3}/g;
@@ -355,13 +524,14 @@ var rgbValues = /([0-9]){1,3}/g;
  * Produce a JSON audit.
  * @param {string|string[]} patternLibrary - href substring that uniquely identifies the pattern library styleSheet(s)
  * @param {string|string[]} ignoreSheet - href substring that uniquely identifies any styleSheets that should be ignored in the audit
+ * @param {object[]} customRules - Custom rules to be audited.
  * @example
  *  // references any styleSheet that contains the text 'pattern-lib'
  *  // e.g. localhost/css/pattern-lib.css
  *  // e.g. http://myDomain/styles/pattern-lib-17D8401NDL.css
  *  auditResults('pattern-lib');
  */
-function auditResults(patternLibrary, ignoreSheet) {
+function auditResults(patternLibrary, ignoreSheet, customRules) {
   if (!Array.isArray(patternLibrary)) {
     patternLibrary = [patternLibrary];
   }
@@ -415,7 +585,7 @@ function auditResults(patternLibrary, ignoreSheet) {
               // make sure the styleSheet isn't in the ignore list
               var ignored = false;
               for (var x = 0, ignore; ignore = ignoreSheet[x]; x++) {
-                if (elStyle[0].styleSheet.indexOf(ignore) !== -1) {
+                if (elStyle[0].styleSheet && elStyle[0].styleSheet.indexOf(ignore) !== -1) {
                   ignored = true;
                   break;
                 }
@@ -444,7 +614,7 @@ function auditResults(patternLibrary, ignoreSheet) {
                 el.problems.push({
                   type: 'property-override',
                   selector: elStyle[0].selector,
-                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.'
+                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
                 });
 
                 if (audit.elms.indexOf(el) === -1) {
@@ -463,116 +633,25 @@ function auditResults(patternLibrary, ignoreSheet) {
 
     });
   }
-}
 
-// allow custom rules to be audited
-var auditRules = [{
-  type: '',
-  selector: 'a[href^="javascript"], a[href="#"]',
-  description: 'Anchor tags that do not navigate should be buttons.'
-},
-{
-  type: '',
-  selector: '.fs-h1:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h2:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h3:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h4:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
-  description: 'Style guide heading classes should not be applied to non-heading elements.'
-}];
+  for (i = 0; i < customRules.length; i++) {
+    elms = document.querySelectorAll(customRules[i].selector);
 
-for (var i = 0; i < auditRules.length; i++) {
-  var elms = document.querySelectorAll(auditRules[i].selector);
-
-  for (var j = 0; j < elms.length; j++) {
-    elms[j].problems = elms[j].problems || [];
-    elms[j].problems.push({
-      type: auditRules[i].type,
-      selector: auditRules[i].selector,
-      description: auditRules[i].description
-    });
+    for (var j = 0; j < elms.length; j++) {
+      elms[j].problems = elms[j].problems || [];
+      elms[j].problems.push({
+        type: customRules[i].type,
+        selector: customRules[i].selector,
+        description: customRules[i].description
+      });
+      elms[j].setAttribute('data-style-audit', 'custom-rule');
+    }
   }
 }
+
+window.auditResults = auditResults;
 /*jshint -W084 */
-/* global console, preventParentScroll */
-
-var trayHeight = 200;
-
-// create a div that will push the content out of the way of the results tray
-var push = document.createElement('div');
-push.classList.add('audit-push-results');
-document.body.appendChild(push);
-
-// append the tray to body
-var auditTool = document.createElement('div');
-auditTool.setAttribute('class', 'audit-results');
-document.body.appendChild(auditTool);
-preventParentScroll(auditTool);
-
-// create a title for the tray
-var code = document.createElement('code');
-code.setAttribute('class', 'language-markup');
-var pre = document.createElement('pre');
-pre.appendChild(code);
-
-var title = document.createElement('div');
-title.setAttribute('class', 'audit-results__title');
-title.appendChild(pre);
-auditTool.appendChild(title);
-
-// create a container for the results
-var container = document.createElement('div');
-container.setAttribute('class', 'audit-results__body');
-auditTool.appendChild(container);
-
-// append a styles for the tray to body
-var trayStyle = document.createElement('style');
-var trayCss = '' +
-  '.audit-results {' +
-    'position: fixed;' +
-    'bottom: -' + trayHeight + 'px;' +
-    'left: 0;' +
-    'right: 0;' +
-    'height: ' + trayHeight + 'px;' +
-    'background: white;' +
-    'border-top: 0 solid black;' +
-    'transition: bottom 300ms, border 300ms;' +
-    'overflow-y: auto;' +
-  '}' +
-  'body.open-audit .audit-results {' +
-    'bottom: 0;' +
-    'border-top-width: 1px;' +
-  '}' +
-  '.audit-push-results {' +
-    'height: 0;' +
-    'transition: height 300ms;' +
-  '}' +
-  'body.open-audit .audit-push-results {' +
-    'height: ' + trayHeight + 'px;' +
-  '}' +
-  '.audit-results__body {' +
-    'padding: 1em;' +
-  '}' +
-  // override bootstrap and prism styles
-  '.audit-results pre[class*=language-] {' +
-    'border-radius: 0;' +
-    'margin: 0;' +
-  '}' +
-  '.audit-results pre[class*=language-]>code[data-language]::before {' +
-    'display: none;' +
-  '}' +
-  // make all audit elements a different color
-  '[data-style-audit] {' +
-    'background: salmon !important;' +
-  '}';
-trayStyle.appendChild(document.createTextNode(trayCss));
-document.head.appendChild(trayStyle);
-
-// load prism.js syntax highlighting
-var prismJS = document.createElement('script');
-prismJS.setAttribute('async', true);
-prismJS.src = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.js';
-document.body.appendChild(prismJS);
-var prismCSS = document.createElement('link');
-prismCSS.setAttribute('rel', 'stylesheet');
-prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.css';
-document.head.appendChild(prismCSS);
+/* global container, auditTool, code, Prism */
 
 /**
  * Escape <, >, and "" for output.
@@ -593,11 +672,13 @@ function openAuditTool(el) {
 
   // remove all previous results
   container.innerHTML = '';
+  auditTool.scrollTop = 0;
 
   // set the title
   var wrap = document.createElement('div');
   wrap.appendChild(el.cloneNode(false));
   wrap.firstChild.removeAttribute('data-style-audit');
+  wrap.firstChild.removeAttribute('data-style-computed');
   code.innerHTML = escapeHTML(wrap.innerHTML);
   Prism.highlightElement(code);
 
@@ -607,7 +688,15 @@ function openAuditTool(el) {
   var li;
   for (var i = 0, result; result = el.problems[i]; i++) {
     li = document.createElement('li');
-    li.innerHTML = '<label><input type="checkbox"/>' + result.description + '</label>';
+    li.innerHTML = ''+
+      '<div>' +
+        // TODO: add title "Don't show me again" when I have a way to ignore results
+        '<input id="audit-result-' + i + '" type="checkbox"/>' +
+      '</div>' +
+      '<div>' +
+        // TODO: add title "Don't show me again" when I have a way to ignore results
+        /*'<label for="audit-result-' + i + '">' + */result.description/* + '</label>'*/ +
+      '</div>';
     frag.appendChild(li);
   }
   ul.appendChild(frag);
@@ -644,7 +733,7 @@ document.body.addEventListener('click', function(e) {
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global getStyleSheetRules, forEachRule, SPECIFICITY */
+/* global getStyleSheetRules, forEachRule, SPECIFICITY, push */
 
 /**
  * Sort a computedStyle by specificity order
@@ -680,76 +769,127 @@ function compareSpecificity(a, b) {
  * Parse all the styleSheets on the page and determine which rules apply to which elements.
  */
 function parseStyleSheets() {
-  var sheets = document.styleSheets;
-  var sheet, selectors, selector, specificity, elms, el, declaration, value, elStyle;
+  // clear all previous parsing
+  push.setAttribute('data-loading', 'true');
 
-  // loop through each styleSheet
-  for (var i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
-    sheet = sheets[i];
+  // allow the loading screen to show
+  setTimeout(function() {
+    var all = document.querySelectorAll('[data-style-computed]');
+    var i, allLength, sheetLength;
+    for (i = 0, allLength = all.length; i < allLength; i++) {
+      all[i].computedStyles = {};
+    }
 
-    // create a closure for the styleSheet order so that we can resolve specificity ties
-    // by the order in which the styleSheets are loaded on the page
-    (function(index) {
-      getStyleSheetRules(sheet, function(rules, href) {
+    var sheets = document.styleSheets;
+    var count = 0;
+    var sheet, selectors, selector, specificity, elms, el, declaration, value, elStyle;
 
-        forEachRule(rules, function(rule) {
-          // deal with each selector individually since each selector can have it's own
-          // level of specificity
-          selectors = rule.selectorText.split(',');
+    // loop through each styleSheet
+    for (i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
+      sheet = sheets[i];
 
-          for (var j = 0; selector = selectors[j]; j++) {
-            specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
+      // create a closure for the styleSheet order so that we can resolve specificity ties
+      // by the order in which the styleSheets are loaded on the page
+      (function(index) {
+        getStyleSheetRules(sheet, function(rules, href) {
 
-            try {
-              elms = document.querySelectorAll(selector);
-            }
-            catch(e) {
-              continue;
-            }
+          forEachRule(rules, function(rule) {
+            // deal with each selector individually since each selector can have it's own
+            // level of specificity
+            selectors = rule.selectorText.split(',');
 
-            // loop through each element and set their computedStyles property
-            for (var k = 0, elmsLength = elms.length; k < elmsLength; k++) {
-              el = elms[k];
-              el.computedStyles = el.computedStyles || {};
+            for (var j = 0; selector = selectors[j]; j++) {
+              specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
-              // loop through each rule declaration and set the value in computedStyles
-              for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
-                declaration = rule.style[x];
-                value = rule.style[declaration];
+              try {
+                elms = document.querySelectorAll(selector);
+              }
+              catch(e) {
+                continue;
+              }
 
-                el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-                elStyle = el.computedStyles[declaration];
+              // loop through each element and set their computedStyles property
+              for (var k = 0, elmsLength = elms.length; k < elmsLength; k++) {
+                el = elms[k];
+                el.computedStyles = el.computedStyles || {};
 
-                // check that this selector isn't already being applied to this element
-                var ruleApplied = false;
-                for (var y = 0, elLength = elStyle.length; y < elLength; y++) {
-                  if (elStyle[y].selector === rule.selectorText &&
-                      elStyle[y].styleSheet === href) {
+                // loop through each rule declaration and set the value in computedStyles
+                for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
+                  declaration = rule.style[x];
+                  value = rule.style[declaration];
 
-                    elStyle[y].specificity = compareSpecificity(elStyle[y].specificity, specificity);
-                    ruleApplied = true;
-                    break;
+                  el.computedStyles[declaration] = el.computedStyles[declaration] || [];
+                  elStyle = el.computedStyles[declaration];
+
+                  // check that this selector isn't already being applied to this element
+                  var ruleApplied = false;
+                  for (var y = 0, elLength = elStyle.length; y < elLength; y++) {
+                    if (elStyle[y].selector === rule.selectorText &&
+                        elStyle[y].styleSheet === href) {
+
+                      elStyle[y].specificity = compareSpecificity(elStyle[y].specificity, specificity);
+                      ruleApplied = true;
+                      break;
+                    }
                   }
-                }
 
-                if (!ruleApplied) {
-                  elStyle.push({
-                    value: value,
-                    styleSheet: href,
-                    specificity: specificity,
-                    selector: rule.selectorText,  // we want the entire selector
-                    index: index  // order of the stylesheet for resolving specificity ties
-                  });
-                }
+                  if (!ruleApplied) {
+                    elStyle.push({
+                      value: value,
+                      styleSheet: href,
+                      specificity: specificity,
+                      selector: rule.selectorText,  // we want the entire selector
+                      index: index  // order of the stylesheet for resolving specificity ties
+                    });
+                    el.setAttribute('data-style-computed', 'true');
+                  }
 
-                // sort declaration styles by specificity (i.e. how the browser would
-                // apply the style)
-                elStyle.sort(specificitySort);
+                  // sort declaration styles by specificity (i.e. how the browser would
+                  // apply the style)
+                  elStyle.sort(specificitySort);
+                }
               }
             }
+          });
+
+          // fire an event once all styleSheets have been parsed.
+          // this allows the auditResults() function to be called on the event
+          if (++count === sheetLength) {
+            push.removeAttribute('data-loading');
+            var event = new CustomEvent('styleSheetsParsed', {count: count});
+            document.dispatchEvent(event);
           }
         });
-      });
-    })(i);
-  }
+      })(i);
+    }
+  }, 250);
 }
+
+// give enough time for the styles to process
+setTimeout(function() {
+  push.removeAttribute('style');
+  push.firstChild.removeAttribute('style');
+  parseStyleSheets();
+}, 250);
+
+window.parseStyleSheets = parseStyleSheets;
+/* global parseStyleSheets, auditResults */
+
+// You code here
+document.addEventListener('styleSheetsParsed', function() {
+  // allow custom rules to be audited
+  var auditRules = [{
+    type: '',
+    selector: 'a[href^="javascript"], a[href="#"], a:not([href])',
+    description: 'Anchor tags that do not navigate should be buttons.'
+  },
+  {
+    type: '',
+    selector: '.fs-h1:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h2:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h3:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h4:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
+    description: 'Style guide heading classes should not be applied to non-heading elements.'
+  }];
+
+  auditResults('familysearch-styles','hf', auditRules);
+});
+
+})(window, document);
