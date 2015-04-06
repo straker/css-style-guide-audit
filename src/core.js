@@ -1,4 +1,5 @@
 /*jshint unused:false */
+/*jshint latedef: nofunc */
 /* global console */
 
 var trayHeight = 200;
@@ -219,7 +220,16 @@ function loadCSSCors(url, callback) {
  * @return {CSSRuleList}
  */
 function getRules(sheet) {
-  return sheet.cssRules || sheet.rules;
+  try {
+    return sheet.cssRules || sheet.rules;
+  }
+  catch (e) {
+    // Firefox will throw an insecure error if trying to look at the rules of a
+    // cross domain styleSheet. We'll just eat the error and continue as the
+    // code will automatically request the styleSheet through CORS to be able
+    // to read it
+    return;
+  }
 }
 
 /**
@@ -362,4 +372,50 @@ function preventParentScroll(element) {
  */
 function rgbToHex(r, g, b) {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+/**
+ * Convert a hyphen delimited string into a camel-case string.
+ * @param {string} str - Hyphen delimited string.
+ * @returns {string}
+ */
+function camelCase(str) {
+  return str.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+}
+
+// Browser sniffing (hurray!) :(
+var isFirefox = navigator.userAgent.match(/firefox/i);
+
+/**
+ * Normalize a property name.
+ * @param {string} property - CSS property.
+ * @returns {string}
+ */
+function normalizeProperty(property) {
+  // Firefox uses 'padding-left-value' or 'padding-left-rtl-source' as a property indices
+  // but doesn't actually have any of those as property names, so we need to normalize
+  // them to their intended property value of 'padding-left'
+  property = property.replace(/(-left|-right)-.*-source|(-left|-right)-value/g, function(match, p1, p2) {
+    return p1 || p2;
+  });
+
+  // Firefox uses 'float' as a property index but doesn't actually have it as a property
+  // name, so we need to normalize it to its intended property value of 'cssFlaot'
+  if (isFirefox && property === 'float') {
+    property = 'cssFloat';
+  }
+
+  return property;
+}
+
+/**
+ * Get a value from a style rule.
+ * @param {CSS2Properties} style - CSS Style property.
+ * @param {string} property - CSS property.
+ */
+function getStyleValue(style, property) {
+  property = normalizeProperty(property);
+
+  // firefox camel-cases all style properties
+  return style[property] || style[camelCase(property)];
 }

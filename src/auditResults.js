@@ -1,7 +1,7 @@
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global console, getStyleSheetRules, forEachRule, rgbToHex, push */
+/* global console, getStyleSheetRules, forEachRule, rgbToHex, push, getStyleValue */
 
 var audit = {elms: []};
 var rgbValues = /([0-9]){1,3}/g;
@@ -35,7 +35,7 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
   audit = {elms: []};
 
   // loop through each provided pattern library
-  var link, sheet, elms, el, declaration, value, elStyle;
+  var link, sheet, elms, el, property, value, elStyle;
   for (var i = 0, patternLib; patternLib = patternLibrary[i]; i++) {
     link = document.querySelector('link[href*="' + patternLib + '"]');
 
@@ -60,12 +60,12 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
         for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
           el = elms[j];
 
-          // loop through each rule declaration and check that the pattern library styles
+          // loop through each rule property and check that the pattern library styles
           // are being applied
           for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
-            declaration = rule.style[k];
-            value = rule.style[declaration];
-            elStyle = el.computedStyles[declaration];
+            property = rule.style[k];
+            value = getStyleValue(rule.style, property);
+            elStyle = el.computedStyles[property];
 
             if (elStyle[0].styleSheet !== href) {
               // make sure the styleSheet isn't in the ignore list
@@ -100,7 +100,7 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
                 el.problems.push({
                   type: 'property-override',
                   selector: elStyle[0].selector,
-                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
+                  description: '<code>' + property + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
                 });
 
                 if (audit.elms.indexOf(el) === -1) {

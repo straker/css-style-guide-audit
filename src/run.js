@@ -1,4 +1,4 @@
-/* global parseStyleSheets, auditResults */
+/* global auditResults */
 
 // You code here
 document.addEventListener('styleSheetsParsed', function() {

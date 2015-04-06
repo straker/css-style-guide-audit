@@ -1,6 +1,7 @@
 (function(window, document) {
 'use strict';
 /*jshint unused:false */
+/*jshint latedef: nofunc */
 /* global console */
 
 var trayHeight = 200;
@@ -221,7 +222,16 @@ function loadCSSCors(url, callback) {
  * @return {CSSRuleList}
  */
 function getRules(sheet) {
-  return sheet.cssRules || sheet.rules;
+  try {
+    return sheet.cssRules || sheet.rules;
+  }
+  catch (e) {
+    // Firefox will throw an insecure error if trying to look at the rules of a
+    // cross domain styleSheet. We'll just eat the error and continue as the
+    // code will automatically request the styleSheet through CORS to be able
+    // to read it
+    return;
+  }
 }
 
 /**
@@ -364,6 +374,52 @@ function preventParentScroll(element) {
  */
 function rgbToHex(r, g, b) {
   return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+/**
+ * Convert a hyphen delimited string into a camel-case string.
+ * @param {string} str - Hyphen delimited string.
+ * @returns {string}
+ */
+function camelCase(str) {
+  return str.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+}
+
+// Browser sniffing (hurray!) :(
+var isFirefox = navigator.userAgent.match(/firefox/i);
+
+/**
+ * Normalize a property name.
+ * @param {string} property - CSS property.
+ * @returns {string}
+ */
+function normalizeProperty(property) {
+  // Firefox uses 'padding-left-value' or 'padding-left-rtl-source' as a property indices
+  // but doesn't actually have any of those as property names, so we need to normalize
+  // them to their intended property value of 'padding-left'
+  property = property.replace(/(-left|-right)-.*-source|(-left|-right)-value/g, function(match, p1, p2) {
+    return p1 || p2;
+  });
+
+  // Firefox uses 'float' as a property index but doesn't actually have it as a property
+  // name, so we need to normalize it to its intended property value of 'cssFlaot'
+  if (isFirefox && property === 'float') {
+    property = 'cssFloat';
+  }
+
+  return property;
+}
+
+/**
+ * Get a value from a style rule.
+ * @param {CSS2Properties} style - CSS Style property.
+ * @param {string} property - CSS property.
+ */
+function getStyleValue(style, property) {
+  property = normalizeProperty(property);
+
+  // firefox camel-cases all style properties
+  return style[property] || style[camelCase(property)];
 }
 /**
  * Calculates the specificity of CSS selectors
@@ -515,7 +571,7 @@ if (typeof exports !== 'undefined') {
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global console, getStyleSheetRules, forEachRule, rgbToHex, push */
+/* global console, getStyleSheetRules, forEachRule, rgbToHex, push, getStyleValue */
 
 var audit = {elms: []};
 var rgbValues = /([0-9]){1,3}/g;
@@ -549,7 +605,7 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
   audit = {elms: []};
 
   // loop through each provided pattern library
-  var link, sheet, elms, el, declaration, value, elStyle;
+  var link, sheet, elms, el, property, value, elStyle;
   for (var i = 0, patternLib; patternLib = patternLibrary[i]; i++) {
     link = document.querySelector('link[href*="' + patternLib + '"]');
 
@@ -574,12 +630,12 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
         for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
           el = elms[j];
 
-          // loop through each rule declaration and check that the pattern library styles
+          // loop through each rule property and check that the pattern library styles
           // are being applied
           for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
-            declaration = rule.style[k];
-            value = rule.style[declaration];
-            elStyle = el.computedStyles[declaration];
+            property = rule.style[k];
+            value = getStyleValue(rule.style, property);
+            elStyle = el.computedStyles[property];
 
             if (elStyle[0].styleSheet !== href) {
               // make sure the styleSheet isn't in the ignore list
@@ -614,7 +670,7 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
                 el.problems.push({
                   type: 'property-override',
                   selector: elStyle[0].selector,
-                  description: '<code>' + declaration + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
+                  description: '<code>' + property + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
                 });
 
                 if (audit.elms.indexOf(el) === -1) {
@@ -733,7 +789,7 @@ document.body.addEventListener('click', function(e) {
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global getStyleSheetRules, forEachRule, SPECIFICITY, push */
+/* global getStyleSheetRules, forEachRule, SPECIFICITY, push, getStyleValue */
 
 /**
  * Sort a computedStyle by specificity order
@@ -782,7 +838,7 @@ function parseStyleSheets() {
 
     var sheets = document.styleSheets;
     var count = 0;
-    var sheet, selectors, selector, specificity, elms, el, declaration, value, elStyle;
+    var sheet, selectors, selector, specificity, elms, el, property, value, elStyle;
 
     // loop through each styleSheet
     for (i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
@@ -813,13 +869,13 @@ function parseStyleSheets() {
                 el = elms[k];
                 el.computedStyles = el.computedStyles || {};
 
-                // loop through each rule declaration and set the value in computedStyles
+                // loop through each rule property and set the value in computedStyles
                 for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
-                  declaration = rule.style[x];
-                  value = rule.style[declaration];
+                  property = rule.style[x];
+                  value = getStyleValue(rule.style, property);
 
-                  el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-                  elStyle = el.computedStyles[declaration];
+                  el.computedStyles[property] = el.computedStyles[property] || [];
+                  elStyle = el.computedStyles[property];
 
                   // check that this selector isn't already being applied to this element
                   var ruleApplied = false;
@@ -844,7 +900,7 @@ function parseStyleSheets() {
                     el.setAttribute('data-style-computed', 'true');
                   }
 
-                  // sort declaration styles by specificity (i.e. how the browser would
+                  // sort property styles by specificity (i.e. how the browser would
                   // apply the style)
                   elStyle.sort(specificitySort);
                 }
@@ -873,7 +929,7 @@ setTimeout(function() {
 }, 250);
 
 window.parseStyleSheets = parseStyleSheets;
-/* global parseStyleSheets, auditResults */
+/* global auditResults */
 
 // You code here
 document.addEventListener('styleSheetsParsed', function() {

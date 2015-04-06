@@ -23,7 +23,8 @@ gulp.task('scripts', function() {
     .pipe(size())
     .pipe(gulp.dest('.'))
     .pipe(rename('index.min.js'))
-    .pipe(uglify())
+    // prevent IIFE from starting with !, which breaks bookmarklet return value
+    .pipe(uglify({compress: {negate_iife: false}}))
     .pipe(size())
     .pipe(gulp.dest('.'))
     .pipe(rename('bookmarklet.js'))

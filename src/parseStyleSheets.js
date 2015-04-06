@@ -1,7 +1,7 @@
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global getStyleSheetRules, forEachRule, SPECIFICITY, push */
+/* global getStyleSheetRules, forEachRule, SPECIFICITY, push, getStyleValue */
 
 /**
  * Sort a computedStyle by specificity order
@@ -50,7 +50,7 @@ function parseStyleSheets() {
 
     var sheets = document.styleSheets;
     var count = 0;
-    var sheet, selectors, selector, specificity, elms, el, declaration, value, elStyle;
+    var sheet, selectors, selector, specificity, elms, el, property, value, elStyle;
 
     // loop through each styleSheet
     for (i = 0, sheetLength = sheets.length; i < sheetLength; i++) {
@@ -81,13 +81,13 @@ function parseStyleSheets() {
                 el = elms[k];
                 el.computedStyles = el.computedStyles || {};
 
-                // loop through each rule declaration and set the value in computedStyles
+                // loop through each rule property and set the value in computedStyles
                 for (var x = 0, styleLength = rule.style.length; x < styleLength; x++) {
-                  declaration = rule.style[x];
-                  value = rule.style[declaration];
+                  property = rule.style[x];
+                  value = getStyleValue(rule.style, property);
 
-                  el.computedStyles[declaration] = el.computedStyles[declaration] || [];
-                  elStyle = el.computedStyles[declaration];
+                  el.computedStyles[property] = el.computedStyles[property] || [];
+                  elStyle = el.computedStyles[property];
 
                   // check that this selector isn't already being applied to this element
                   var ruleApplied = false;
@@ -112,7 +112,7 @@ function parseStyleSheets() {
                     el.setAttribute('data-style-computed', 'true');
                   }
 
-                  // sort declaration styles by specificity (i.e. how the browser would
+                  // sort property styles by specificity (i.e. how the browser would
                   // apply the style)
                   elStyle.sort(specificitySort);
                 }
