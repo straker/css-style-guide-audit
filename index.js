@@ -10,36 +10,7 @@ var trayHeight = 200;
 var push = document.createElement('div');
 push.classList.add('audit-push-results');
 push.setAttribute('data-loading', 'true');
-
-// set the style on the element so we don't have to wait for the styles to be processed
-// before seeing the loading screen
-push.innerHTML = '<div style="' +
-    'background-color: #fff;' +
-    'border-radius: 100%;' +
-    'margin: 2px;' +
-    '-webkit-animation-fill-mode: both;' +
-    'animation-fill-mode: both;' +
-    'border: 3px solid #fff;' +
-    'border-bottom-color: transparent;' +
-    'height: 100px;' +
-    'width: 100px;' +
-    'background: transparent !important;' +
-    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
-    'animation: rotate 0.75s 0s linear infinite;' +
-    'position: absolute;' +
-    'top: 50%;' +
-    'left: 50%;' +
-  '"></div>';
-
-push.style.position = 'fixed';
-push.style.left = 0;
-push.style.right = 0;
-push.style.top = 0;
-push.style.bottom = 0;
-push.style.background = 'rgba(166,166,166,.6)';
-push.style.zIndex = 10000000;
-push.style.height = 'auto';
-
+push.innerHTML = '<div></div>';
 document.body.appendChild(push);
 
 // append the tray to body
@@ -66,6 +37,7 @@ auditTool.appendChild(container);
 
 // append a styles for the tray to body
 var trayStyle = document.createElement('style');
+trayStyle.setAttribute('data-style-skip', 'true');
 var trayCss = '' +
   '.audit-results {' +
     'position: fixed;' +
@@ -174,6 +146,7 @@ if (!window.Prism) {
   var prismCSS = document.createElement('link');
   prismCSS.setAttribute('rel', 'stylesheet');
   prismCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/prism/0.0.1/prism.min.css';
+  prismCSS.setAttribute('data-style-skip', 'true');
   document.head.appendChild(prismCSS);
 }
 
@@ -184,15 +157,17 @@ if (!window.Prism) {
  */
 function loadCSSCors(url, callback) {
   var XHR = XMLHttpRequest;
+  var xhr;
   var hasCred = false;
-  try {hasCred = XHR && ('withCredentials' in (new XHR()));} catch(e) {}
+  try {
+    hasCred = XMLHttpRequest && ('withCredentials' in (xhr = new XHR()));
+  } catch(e) {}
 
   if (!hasCred) {
     console.error('CORS not supported');
     return;
   }
 
-  var xhr = new XHR();
   xhr.open('GET', url);
   xhr.onload = function() {
     xhr.onload = xhr.onerror = null;
@@ -202,6 +177,7 @@ function loadCSSCors(url, callback) {
     else {
       var styleTag = document.createElement('style');
       styleTag.appendChild(document.createTextNode(xhr.responseText));
+      styleTag.setAttribute('data-url', url);  // set url for testing
       document.head.appendChild(styleTag);
       callback(styleTag);
 
@@ -226,7 +202,7 @@ function getRules(sheet) {
     return sheet.cssRules || sheet.rules;
   }
   catch (e) {
-    // Firefox will throw an insecure error if trying to look at the rules of a
+    // Firefox will throw an insecure error when trying to look at the rules of a
     // cross domain styleSheet. We'll just eat the error and continue as the
     // code will automatically request the styleSheet through CORS to be able
     // to read it
@@ -242,6 +218,12 @@ function getRules(sheet) {
  */
 var styleSheets = {};  // keep a list of already requested styleSheets so we don't have to request them again
 function getStyleSheetRules(sheet, callback) {
+  // skip any styleSheets we don't want to parse (e.g. prism.css, audit styles)
+  if (sheet.ownerNode && sheet.ownerNode.hasAttribute('data-style-skip')) {
+    callback([], sheet.href);
+    return;
+  }
+
   var rules = getRules(sheet);
 
   // check to see if we've already loaded this styleSheet
@@ -377,49 +359,52 @@ function rgbToHex(r, g, b) {
 }
 
 /**
- * Convert a hyphen delimited string into a camel-case string.
- * @param {string} str - Hyphen delimited string.
+ * Convert a hyphen-separated string into a camel case string.
+ * @param {string} str - Hyphen-separated string.
  * @returns {string}
  */
 function camelCase(str) {
-  return str.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
-}
+  str = str.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
 
-// Browser sniffing (hurray!) :(
-var isFirefox = navigator.userAgent.match(/firefox/i);
-
-/**
- * Normalize a property name.
- * @param {string} property - CSS property.
- * @returns {string}
- */
-function normalizeProperty(property) {
-  // Firefox uses 'padding-left-value' or 'padding-left-rtl-source' as a property indices
-  // but doesn't actually have any of those as property names, so we need to normalize
-  // them to their intended property value of 'padding-left'
-  property = property.replace(/(-left|-right)-.*-source|(-left|-right)-value/g, function(match, p1, p2) {
-    return p1 || p2;
-  });
-
-  // Firefox uses 'float' as a property index but doesn't actually have it as a property
-  // name, so we need to normalize it to its intended property value of 'cssFlaot'
-  if (isFirefox && property === 'float') {
-    property = 'cssFloat';
+  // webkit is lowercase in Chrome
+  if (str.indexOf('Webkit') === 0) {
+    str = str[0].toLowerCase() + str.slice(1);
   }
 
-  return property;
+  return str;
 }
+
+// translate browser specific styles to their actual style.
+// @see https://gist.github.com/dennisroethig/7078659
+var propertyMap = {
+    'float': 'cssFloat',
+    'margin-left-value': 'marginLeft',
+    'margin-left-ltr-source': '',
+    'margin-left-rtl-source': '',
+    'margin-right-value': 'marginRight',
+    'margin-right-ltr-source': '',
+    'margin-right-rtl-source': '',
+    'padding-right-value': 'paddingRight',
+    'padding-right-ltr-source': '',
+    'padding-right-rtl-source': '',
+    'padding-left-value': 'paddingLeft',
+    'padding-left-ltr-source': '',
+    'padding-left-rtl-source': ''
+};
 
 /**
  * Get a value from a style rule.
- * @param {CSS2Properties} style - CSS Style property.
- * @param {string} property - CSS property.
+ * @param {CSS2Properties} style - CSS Style property object.
+ * @param {string} property - CSS property name.
  */
 function getStyleValue(style, property) {
-  property = normalizeProperty(property);
+  // Chrome maps hyphen-separated names to their camel case name
+  // Firefox uses camel case names
+  // if no value is found, default to "" so that .indexOf will still work
+  var value = style[property] || style[ camelCase(property) ] ||
+              style[ propertyMap[property] ] || '';
 
-  // firefox camel-cases all style properties
-  return style[property] || style[camelCase(property)];
+  return value;
 }
 /**
  * Calculates the specificity of CSS selectors
@@ -595,6 +580,8 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
   if (!Array.isArray(ignoreSheet)) {
     ignoreSheet = [ignoreSheet];
   }
+
+  customRules = customRules || [];
 
   // reset previous audit
   for (var z = 0, elm; elm = audit.elms[z]; z++) {
@@ -825,11 +812,11 @@ function compareSpecificity(a, b) {
  * Parse all the styleSheets on the page and determine which rules apply to which elements.
  */
 function parseStyleSheets() {
-  // clear all previous parsing
   push.setAttribute('data-loading', 'true');
 
   // allow the loading screen to show
   setTimeout(function() {
+    // clear all previous parsing
     var all = document.querySelectorAll('[data-style-computed]');
     var i, allLength, sheetLength;
     for (i = 0, allLength = all.length; i < allLength; i++) {
@@ -895,7 +882,7 @@ function parseStyleSheets() {
                       styleSheet: href,
                       specificity: specificity,
                       selector: rule.selectorText,  // we want the entire selector
-                      index: index  // order of the stylesheet for resolving specificity ties
+                      index: index  // order of the styleSheet for resolving specificity ties
                     });
                     el.setAttribute('data-style-computed', 'true');
                   }
@@ -921,31 +908,6 @@ function parseStyleSheets() {
   }, 250);
 }
 
-// give enough time for the styles to process
-setTimeout(function() {
-  push.removeAttribute('style');
-  push.firstChild.removeAttribute('style');
-  parseStyleSheets();
-}, 250);
-
 window.parseStyleSheets = parseStyleSheets;
-/* global auditResults */
-
-// You code here
-document.addEventListener('styleSheetsParsed', function() {
-  // allow custom rules to be audited
-  var auditRules = [{
-    type: '',
-    selector: 'a[href^="javascript"], a[href="#"], a:not([href])',
-    description: 'Anchor tags that do not navigate should be buttons.'
-  },
-  {
-    type: '',
-    selector: '.fs-h1:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h2:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h3:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h4:not(h1):not(h2):not(h3):not(h4):not(h5), .fs-h5:not(h1):not(h2):not(h3):not(h4):not(h5)',
-    description: 'Style guide heading classes should not be applied to non-heading elements.'
-  }];
-
-  auditResults('familysearch-styles','hf', auditRules);
-});
 
 })(window, document);

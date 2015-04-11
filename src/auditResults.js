@@ -26,6 +26,8 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
     ignoreSheet = [ignoreSheet];
   }
 
+  customRules = customRules || [];
+
   // reset previous audit
   for (var z = 0, elm; elm = audit.elms[z]; z++) {
     elm.style.background = '';

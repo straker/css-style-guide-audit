@@ -37,11 +37,11 @@ function compareSpecificity(a, b) {
  * Parse all the styleSheets on the page and determine which rules apply to which elements.
  */
 function parseStyleSheets() {
-  // clear all previous parsing
   push.setAttribute('data-loading', 'true');
 
   // allow the loading screen to show
   setTimeout(function() {
+    // clear all previous parsing
     var all = document.querySelectorAll('[data-style-computed]');
     var i, allLength, sheetLength;
     for (i = 0, allLength = all.length; i < allLength; i++) {
@@ -107,7 +107,7 @@ function parseStyleSheets() {
                       styleSheet: href,
                       specificity: specificity,
                       selector: rule.selectorText,  // we want the entire selector
-                      index: index  // order of the stylesheet for resolving specificity ties
+                      index: index  // order of the styleSheet for resolving specificity ties
                     });
                     el.setAttribute('data-style-computed', 'true');
                   }
@@ -132,12 +132,5 @@ function parseStyleSheets() {
     }
   }, 250);
 }
-
-// give enough time for the styles to process
-setTimeout(function() {
-  push.removeAttribute('style');
-  push.firstChild.removeAttribute('style');
-  parseStyleSheets();
-}, 250);
 
 window.parseStyleSheets = parseStyleSheets;

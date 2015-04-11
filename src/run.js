@@ -1,6 +1,4 @@
-/* global auditResults */
-
-// You code here
+// Your code here
 document.addEventListener('styleSheetsParsed', function() {
   // allow custom rules to be audited
   var auditRules = [{
