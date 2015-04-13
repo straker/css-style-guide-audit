@@ -27,6 +27,7 @@ function openAuditTool(el) {
   wrap.appendChild(el.cloneNode(false));
   wrap.firstChild.removeAttribute('data-style-audit');
   wrap.firstChild.removeAttribute('data-style-computed');
+  wrap.firstChild.removeAttribute('data-style-using');
   code.innerHTML = escapeHTML(wrap.innerHTML);
   Prism.highlightElement(code);
 

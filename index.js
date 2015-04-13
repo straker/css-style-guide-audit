@@ -49,6 +49,7 @@ var trayCss = '' +
     'border-top: 0 solid black;' +
     'transition: bottom 300ms, border 300ms;' +
     'overflow-y: auto;' +
+    'z-index: 1000000' +
   '}' +
   'body.open-audit .audit-results {' +
     'bottom: 0;' +
@@ -80,11 +81,13 @@ var trayCss = '' +
     'height: 100px;' +
     'width: 100px;' +
     'background: transparent !important;' +
-    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
-    'animation: rotate 0.75s 0s linear infinite;' +
+    '-webkit-animation: styleRotate 0.75s 0s linear infinite;' +
+    'animation: styleRotate 0.75s 0s linear infinite;' +
     'position: absolute;' +
     'top: 50%;' +
     'left: 50%;' +
+    'margin-left: -50px;' +
+    'margin-top: -50px;' +
   '}' +
   'body.open-audit .audit-push-results {' +
     'height: ' + trayHeight + 'px;' +
@@ -133,6 +136,81 @@ var trayCss = '' +
   '[data-style-audit] {' +
     'background: salmon !important;' +
     'cursor: pointer !important;' +
+  '}' +
+  // make the border of all elements using the style a different color
+  '[data-style-using] {' +
+    'outline: 1px dashed #56bd6d !important' +
+  '}' +
+  // rotate animation
+  '@keyframes styleRotate {' +
+    '0%, {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-moz-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-webkit-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-o-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-ms-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
   '}';
 trayStyle.appendChild(document.createTextNode(trayCss));
 document.head.appendChild(trayStyle);
@@ -556,14 +634,14 @@ if (typeof exports !== 'undefined') {
 /*jshint -W083 */
 /*jshint -W084 */
 /*jshint unused:false */
-/* global console, getStyleSheetRules, forEachRule, rgbToHex, push, getStyleValue */
+/* global console, getStyleSheetRules, forEachRule, rgbToHex, push, getStyleValue, compareSpecificity, SPECIFICITY */
 
 var audit = {elms: []};
 var rgbValues = /([0-9]){1,3}/g;
 
 /**
  * Produce a JSON audit.
- * @param {string|string[]} patternLibrary - href substring that uniquely identifies the pattern library styleSheet(s)
+ * @param {string|string[]} styleGuideSheet - href substring that uniquely identifies the style guide styleSheet(s)
  * @param {string|string[]} ignoreSheet - href substring that uniquely identifies any styleSheets that should be ignored in the audit
  * @param {object[]} customRules - Custom rules to be audited.
  * @example
@@ -572,9 +650,11 @@ var rgbValues = /([0-9]){1,3}/g;
  *  // e.g. http://myDomain/styles/pattern-lib-17D8401NDL.css
  *  auditResults('pattern-lib');
  */
-function auditResults(patternLibrary, ignoreSheet, customRules) {
-  if (!Array.isArray(patternLibrary)) {
-    patternLibrary = [patternLibrary];
+function auditResults(styleGuideSheet, ignoreSheet, customRules) {
+  var link, sheet, elms, el, property, value, elStyle;
+
+  if (!Array.isArray(styleGuideSheet)) {
+    styleGuideSheet = [styleGuideSheet];
   }
 
   if (!Array.isArray(ignoreSheet)) {
@@ -585,16 +665,23 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
 
   // reset previous audit
   for (var z = 0, elm; elm = audit.elms[z]; z++) {
-    elm.style.background = '';
-    elm.title = '';
     elm.problems = [];
   }
   audit = {elms: []};
 
-  // loop through each provided pattern library
-  var link, sheet, elms, el, property, value, elStyle;
-  for (var i = 0, patternLib; patternLib = patternLibrary[i]; i++) {
-    link = document.querySelector('link[href*="' + patternLib + '"]');
+  elms = document.querySelectorAll('[data-style-audit]');
+  for (var x = 0; elm = elms[x]; x++) {
+    elm.removeAttribute('data-style-audit');
+  }
+
+  elms = document.querySelectorAll('[data-style-using]');
+  for (var x = 0; elm = elms[x]; x++) {
+    elm.removeAttribute('data-style-using');
+  }
+
+  // loop through each provided style guide
+  for (var i = 0, styleGuide; styleGuide = styleGuideSheet[i]; i++) {
+    link = document.querySelector('link[href*="' + styleGuide + '"]');
 
     if (!link) {
       continue;
@@ -613,11 +700,20 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
           return;
         }
 
+        var selectorSpecificity = SPECIFICITY.calculate(rule.selectorText)[0].specificity.split(',').map(Number);
+
         // loop through each element
         for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
           el = elms[j];
 
-          // loop through each rule property and check that the pattern library styles
+          // change the border of the element to show that it is using the style guide
+          // only apply this to non-element only selectors so we don't have a page full
+          // of borders
+          if (compareSpecificity(selectorSpecificity, [0,0,0,999999]) === selectorSpecificity) {
+            el.setAttribute('data-style-using', 'true');
+          }
+
+          // loop through each rule property and check that the style guide styles
           // are being applied
           for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
             property = rule.style[k];
@@ -677,6 +773,7 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
     });
   }
 
+  // create the custom rule report
   for (i = 0; i < customRules.length; i++) {
     elms = document.querySelectorAll(customRules[i].selector);
 
@@ -689,6 +786,13 @@ function auditResults(patternLibrary, ignoreSheet, customRules) {
       });
       elms[j].setAttribute('data-style-audit', 'custom-rule');
     }
+  }
+
+  // remove any styles from audit results
+  elms = document.querySelectorAll('.audit-results *');
+  for (var x = 0; elm = elms[x]; x++) {
+    elm.removeAttribute('data-style-using');
+    elm.removeAttribute('data-style-audit');
   }
 }
 
@@ -722,6 +826,7 @@ function openAuditTool(el) {
   wrap.appendChild(el.cloneNode(false));
   wrap.firstChild.removeAttribute('data-style-audit');
   wrap.firstChild.removeAttribute('data-style-computed');
+  wrap.firstChild.removeAttribute('data-style-using');
   code.innerHTML = escapeHTML(wrap.innerHTML);
   Prism.highlightElement(code);
 

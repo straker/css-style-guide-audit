@@ -47,6 +47,7 @@ var trayCss = '' +
     'border-top: 0 solid black;' +
     'transition: bottom 300ms, border 300ms;' +
     'overflow-y: auto;' +
+    'z-index: 1000000' +
   '}' +
   'body.open-audit .audit-results {' +
     'bottom: 0;' +
@@ -78,11 +79,13 @@ var trayCss = '' +
     'height: 100px;' +
     'width: 100px;' +
     'background: transparent !important;' +
-    '-webkit-animation: rotate 0.75s 0s linear infinite;' +
-    'animation: rotate 0.75s 0s linear infinite;' +
+    '-webkit-animation: styleRotate 0.75s 0s linear infinite;' +
+    'animation: styleRotate 0.75s 0s linear infinite;' +
     'position: absolute;' +
     'top: 50%;' +
     'left: 50%;' +
+    'margin-left: -50px;' +
+    'margin-top: -50px;' +
   '}' +
   'body.open-audit .audit-push-results {' +
     'height: ' + trayHeight + 'px;' +
@@ -131,6 +134,81 @@ var trayCss = '' +
   '[data-style-audit] {' +
     'background: salmon !important;' +
     'cursor: pointer !important;' +
+  '}' +
+  // make the border of all elements using the style a different color
+  '[data-style-using] {' +
+    'outline: 1px dashed #56bd6d !important' +
+  '}' +
+  // rotate animation
+  '@keyframes styleRotate {' +
+    '0%, {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-moz-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-webkit-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-o-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
+  '}' +
+  '@-ms-keyframes styleRotate {' +
+    '0% {' +
+      '-webkit-transform: rotate(0deg);' +
+      'transform: rotate(0deg);' +
+    '}' +
+    '50% {' +
+      '-webkit-transform: rotate(180deg);' +
+      'transform: rotate(180deg);' +
+    '}' +
+    '100% {' +
+      '-webkit-transform: rotate(360deg);' +
+      'transform: rotate(360deg);' +
+    '}' +
   '}';
 trayStyle.appendChild(document.createTextNode(trayCss));
 document.head.appendChild(trayStyle);
