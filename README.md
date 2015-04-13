@@ -53,3 +53,9 @@ A rule consists of three properties:
 - `type`: a slug that identifies the rule. This slug will be added to the `data-style-audit` attribute of any element that fails the rule. This is useful if you want to give those elements your own styling.
 - `selector`: how to identify any elements that do not pass the rule (using `document.querySelectorAll`)
 - `description`: the text to display in the audit results for any element that fails the rule.
+
+## Using the bookmarklet
+
+You can also create a bookmarklet that will run the entire audit for you on any page. Just edit `src/run.js` to include any custom rules and the style sheet to audit, and then run `gulp scripts`. This will create `bookmarklet.js` that you can then copy into your faviortes bar.
+
+This is an excellent tool to give to designers who can then help run the audits of the site on their own.
