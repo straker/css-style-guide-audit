@@ -63,7 +63,7 @@ document.body.addEventListener('click', function(e) {
 
   // walk the DOM tree looking for an element with the data-style-audit attribute
   do {
-    if (el.getAttribute('data-style-audit')) {
+    if (el.getAttribute('data-style-audit') !== null) {
       e.preventDefault();
       openAuditTool(el);
       return;
