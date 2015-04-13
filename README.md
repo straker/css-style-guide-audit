@@ -59,3 +59,5 @@ A rule consists of three properties:
 You can also create a bookmarklet that will run the entire audit for you on any page. Just edit `src/run.js` to include any custom rules and the style sheet to audit, and then run `gulp scripts`. This will create `bookmarklet.js` that you can then copy into your faviortes bar.
 
 This is an excellent tool to give to designers who can then help run the audits of the site on their own.
+
+**IMPORTANT** - If you are going to create your own custom bookmarklet, please create a branch on your fork where you will push the changes. I will not accept any pull requests that change `src/run.js` or `bookmarklet.js`, so if you need to submit a fix, you must do so on a clean branch without custom bookmarklet changes. [More info](http://stackoverflow.com/questions/10100933/how-to-ignore-files-and-folders-with-pull-requests-to-github-in-distinct-git-clo).
