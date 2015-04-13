@@ -1,4 +1,4 @@
-# Style Guide auditing tool
+# Style Guide Auditing Tool
 
 Audit the CSS on a page to see what elements are using styles from the style guide and which styles are overriding them.
 
@@ -9,6 +9,8 @@ The code parses all the style sheets on the page and keeps track of every rule a
 If you click on any highlighted element, the tool will show you which rules from which style sheets are providing the overrides.
 
 The tool will also outline each element that is using a rule from the style guide. This is helpful to visiual see if you might have missed an element that should be using the style guide but isn't. This will ignore any rules that use just element selectors (no class selector in the rule) since those are always applied so long as the style guide is being used on the page. 
+
+![](/../screenshots/images/image3.png?raw=true)
 
 ## How to use
 
