@@ -12,5 +12,5 @@ document.addEventListener('styleSheetsParsed', function() {
     description: 'Style guide heading classes should not be applied to non-heading elements.'
   }];
 
-  auditResults('familysearch-styles','hf', auditRules);
+  auditStyleGuide('familysearch-styles','hf', auditRules);
 });

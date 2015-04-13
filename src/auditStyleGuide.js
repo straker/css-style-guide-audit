@@ -15,10 +15,10 @@ var rgbValues = /([0-9]){1,3}/g;
  *  // references any styleSheet that contains the text 'pattern-lib'
  *  // e.g. localhost/css/pattern-lib.css
  *  // e.g. http://myDomain/styles/pattern-lib-17D8401NDL.css
- *  auditResults('pattern-lib');
+ *  auditStyleGuide('pattern-lib');
  */
-function auditResults(styleGuideSheet, ignoreSheet, customRules) {
-  var link, sheet, elms, el, property, value, elStyle;
+function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
+  var link, sheet, elm, elms, el, property, value, elStyle;
 
   if (!Array.isArray(styleGuideSheet)) {
     styleGuideSheet = [styleGuideSheet];
@@ -31,18 +31,18 @@ function auditResults(styleGuideSheet, ignoreSheet, customRules) {
   customRules = customRules || [];
 
   // reset previous audit
-  for (var z = 0, elm; elm = audit.elms[z]; z++) {
+  for (var x = 0; elm = audit.elms[x]; x++) {
     elm.problems = [];
   }
   audit = {elms: []};
 
   elms = document.querySelectorAll('[data-style-audit]');
-  for (var x = 0; elm = elms[x]; x++) {
+  for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-audit');
   }
 
   elms = document.querySelectorAll('[data-style-using]');
-  for (var x = 0; elm = elms[x]; x++) {
+  for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
   }
 
@@ -151,16 +151,16 @@ function auditResults(styleGuideSheet, ignoreSheet, customRules) {
         selector: customRules[i].selector,
         description: customRules[i].description
       });
-      elms[j].setAttribute('data-style-audit', 'custom-rule');
+      elms[j].setAttribute('data-style-audit', customRules[i].type);
     }
   }
 
   // remove any styles from audit results
   elms = document.querySelectorAll('.audit-results *');
-  for (var x = 0; elm = elms[x]; x++) {
+  for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
     elm.removeAttribute('data-style-audit');
   }
 }
 
-window.auditResults = auditResults;
+window.auditStyleGuide = auditStyleGuide;
