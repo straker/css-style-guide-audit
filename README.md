@@ -8,13 +8,13 @@ The code parses all the style sheets on the page and keeps track of every rule a
 
 If you click on any highlighted element, the tool will show you which rules from which style sheets are providing the overrides.
 
-The tool will also outline each element that is using a rule from the style guide. This is helpful to visiual see if you might have missed an element that should be using the style guide but isn't. This will ignore any rules that use just element selectors (no class selector in the rule) since those are always applied so long as the style guide is being used on the page. 
+The tool will also outline each element that is using a rule from the style guide. This is helpful to visiual see if you might have missed an element that should be using the style guide but isn't. This will ignore any rules that use just element selectors (no class selector in the rule) since those are always applied so long as the style guide is being used on the page.
 
 ![](/../screenshots/images/image3.png?raw=true)
 
 ## How to use
 
-Out of the box, the tool provides two global functions: `parseStyleSheets()` and `auditStyleGuide()`. Running `parseStyleSheets()` will parse the style sheets on the page. After the function completes, you can run `auditStyleGuide()` to run the audit. 
+Out of the box, the tool provides two global functions: `parseStyleSheets()` and `auditStyleGuide()`. Running `parseStyleSheets()` will parse the style sheets on the page. After the function completes, you can run `auditStyleGuide()` to run the audit.
 
 `auditStyleGuide()` takes two parameters, the first is a string that is the name of the style guide to audit. It uses fuzzy matching to find the name for cases when your compiled style sheet uses hashes, or if you use a minified version on production and a non-minified version on localhost.
 
@@ -22,7 +22,7 @@ Out of the box, the tool provides two global functions: `parseStyleSheets()` and
 // matches any styleSheet that contains the text 'pattern-lib':
 // localhost/css/pattern-lib.css
 // http://myDomain/styles/pattern-lib.min.css
-// http://myDomain/styles/pattern-lib-17D8401NDL.css, 
+// http://myDomain/styles/pattern-lib-17D8401NDL.css,
 auditStyleGuide('pattern-lib');
 ```
 
@@ -59,3 +59,5 @@ A rule consists of three properties:
 You can also create a bookmarklet that will run the entire audit for you on any page. Just edit `src/run.js` to include any custom rules and the style sheet to audit, and then run `gulp scripts`. This will create `bookmarklet.js` that you can then copy into your faviortes bar.
 
 This is an excellent tool to give to designers who can then help run the audits of the site on their own.
+
+**IMPORTANT** - If you are going to create your own custom bookmarklet, please create a branch on your fork where you will push the changes. I will not accept any pull requests that change `src/run.js` or `bookmarklet.js`, so if you need to submit a fix, you must do so on a clean branch without custom bookmarklet changes. [More info](http://stackoverflow.com/questions/10100933/how-to-ignore-files-and-folders-with-pull-requests-to-github-in-distinct-git-clo).
