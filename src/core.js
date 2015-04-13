@@ -7,7 +7,6 @@ var trayHeight = 200;
 // create a div that will push the content out of the way of the results tray
 var push = document.createElement('div');
 push.classList.add('audit-push-results');
-push.setAttribute('data-loading', 'true');
 push.innerHTML = '<div></div>';
 document.body.appendChild(push);
 
