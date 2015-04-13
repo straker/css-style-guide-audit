@@ -1,6 +1,6 @@
 {
-  "name": "pattern-library-audit",
-  "version": "0.0.0",
+  "name": "css-style-guide-audit",
+  "version": "1.0.0",
   "description": "Audit the CSS on a page to ensure that no other styles are overriding the pattern library's styles",
   "main": "index.js",
   "scripts": {
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/straker/pattern-library-audit.git"
+    "url": "https://github.com/straker/css-style-guide-audit.git"
   },
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/straker/pattern-library-audit/issues"
+    "url": "https://github.com/straker/css-style-guide-audit/issues"
   },
-  "homepage": "https://github.com/straker/pattern-library-audit",
+  "homepage": "https://github.com/straker/css-style-guide-audit",
   "devDependencies": {
     "gulp": "^3.8.11",
     "gulp-concat-util": "^0.5.2",
