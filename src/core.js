@@ -2,7 +2,7 @@
 /*jshint latedef: nofunc */
 /* global console */
 
-var trayHeight = 200;
+var trayHeight = 300;
 
 // create a div that will push the content out of the way of the results tray
 var push = document.createElement('div');
