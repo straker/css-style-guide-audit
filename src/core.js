@@ -136,7 +136,7 @@ var trayCss = '' +
   '}' +
   // make the border of all elements using the style a different color
   '[data-style-using] {' +
-    'outline: 1px dashed #56bd6d !important' +
+    'outline: 1px dashed midnightblue !important' +
   '}' +
   // rotate animation
   '@keyframes styleRotate {' +
