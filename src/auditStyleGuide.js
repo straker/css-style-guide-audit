@@ -18,7 +18,7 @@ var rgbValues = /([0-9]){1,3}/g;
  *  auditStyleGuide('pattern-lib');
  */
 function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
-  var link, sheet, elm, elms, el, property, value, elStyle;
+  var link, sheet, elm, elms, el, selectors, selector, specificity, property, value, elStyle, ignore;
 
   if (!Array.isArray(styleGuideSheet)) {
     styleGuideSheet = [styleGuideSheet];
@@ -60,71 +60,77 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
 
       forEachRule(rules, function(rule) {
 
-        try {
-          elms = document.querySelectorAll(rule.selectorText);
-        }
-        catch(e) {
-          return;
-        }
+        // deal with each selector individually since each selector can have it's own
+        // level of specificity
+        selectors = rule.selectorText.split(',');
 
-        var selectorSpecificity = SPECIFICITY.calculate(rule.selectorText)[0].specificity.split(',').map(Number);
+        for (var y = 0; selector = selectors[y]; y++) {
+          specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
-        // loop through each element
-        for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
-          el = elms[j];
-
-          // change the border of the element to show that it is using the style guide
-          // only apply this to non-element only selectors so we don't have a page full
-          // of borders
-          if (compareSpecificity(selectorSpecificity, [0,0,0,999999]) === selectorSpecificity) {
-            el.setAttribute('data-style-using', 'true');
+          try {
+            elms = document.querySelectorAll(selector);
+          }
+          catch(e) {
+            return;
           }
 
-          // loop through each rule property and check that the style guide styles
-          // are being applied
-          for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
-            property = rule.style[k];
-            value = getStyleValue(rule.style, property);
-            elStyle = el.computedStyles[property];
+          // loop through each element
+          for (var j = 0, elmsLength = elms.length; j < elmsLength; j++) {
+            el = elms[j];
 
-            if (elStyle[0].styleSheet !== href) {
-              // make sure the styleSheet isn't in the ignore list
-              var ignored = false;
-              for (var x = 0, ignore; ignore = ignoreSheet[x]; x++) {
-                if (elStyle[0].styleSheet && elStyle[0].styleSheet.indexOf(ignore) !== -1) {
-                  ignored = true;
-                  break;
-                }
-              }
+            // change the border of the element to show that it is using the style guide
+            // only apply this to non-element only selectors so we don't have a page full
+            // of borders
+            if (compareSpecificity(specificity, [0,0,0,999999]) === specificity) {
+              el.setAttribute('data-style-using', 'true');
+            }
 
-              if (!ignored) {
-                el.problems = el.problems || [];
+            // loop through each rule property and check that the style guide styles
+            // are being applied
+            for (var k = 0, styleLength = rule.style.length; k < styleLength; k++) {
+              property = rule.style[k];
+              value = getStyleValue(rule.style, property);
+              elStyle = el.computedStyles[property];
 
-                var originalValue;
-                var overrideValue;
-                // convert rgb values to hex, but ignore any rgba values
-                if (value.indexOf('rgb(') !== -1) {
-                  originalValue = rgbToHex.apply(this, value.match(rgbValues).map(Number));
-                }
-                else {
-                  originalValue = value;
+              if (elStyle[0].styleSheet !== href) {
+                // make sure the styleSheet isn't in the ignore list
+                var ignored = false;
+                for (x = 0; ignore = ignoreSheet[x]; x++) {
+                  if (elStyle[0].styleSheet && elStyle[0].styleSheet.indexOf(ignore) !== -1) {
+                    ignored = true;
+                    break;
+                  }
                 }
 
-                if (elStyle[0].value.indexOf('rgb(') !== -1) {
-                  overrideValue = rgbToHex.apply(this, elStyle[0].value.match(rgbValues).map(Number));
-                }
-                else {
-                  overrideValue = elStyle[0].value;
-                }
+                if (!ignored) {
+                  el.problems = el.problems || [];
 
-                el.problems.push({
-                  type: 'property-override',
-                  selector: elStyle[0].selector,
-                  description: '<code>' + property + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
-                });
+                  var originalValue;
+                  var overrideValue;
+                  // convert rgb values to hex, but ignore any rgba values
+                  if (value.indexOf('rgb(') !== -1) {
+                    originalValue = rgbToHex.apply(this, value.match(rgbValues).map(Number));
+                  }
+                  else {
+                    originalValue = value;
+                  }
 
-                if (audit.elms.indexOf(el) === -1) {
-                  audit.elms.push(el);
+                  if (elStyle[0].value.indexOf('rgb(') !== -1) {
+                    overrideValue = rgbToHex.apply(this, elStyle[0].value.match(rgbValues).map(Number));
+                  }
+                  else {
+                    overrideValue = elStyle[0].value;
+                  }
+
+                  el.problems.push({
+                    type: 'property-override',
+                    selector: elStyle[0].selector,
+                    description: '<code>' + property + ': ' + originalValue + '</code> overridden by <code>' + overrideValue + '</code> in the selector <code>' + elStyle[0].selector + '</code> from styleSheet <code>' + elStyle[0].styleSheet + '.',
+                  });
+
+                  if (audit.elms.indexOf(el) === -1) {
+                    audit.elms.push(el);
+                  }
                 }
               }
             }
