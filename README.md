@@ -10,7 +10,7 @@ If you click on any highlighted element, the tool will show you which rules from
 
 The tool will also outline each element that is using a rule from the style guide. This is helpful to visiual see if you might have missed an element that should be using the style guide but isn't. This will ignore any rules that use just element selectors (no class selector in the rule) since those are always applied so long as the style guide is being used on the page.
 
-![](/../screenshots/images/image3.png?raw=true)
+![](/../screenshots/image0.png?raw=true)
 
 ## How to use
 
