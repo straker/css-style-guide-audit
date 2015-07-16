@@ -4,7 +4,7 @@ Audit the CSS on a page to see what elements are using styles from the style gui
 
 ## How it works
 
-The code parses all the style sheets on the page and keeps track of every rule and how it affect all elements. When you run the audit, it takes this information and looks at which rules from other style sheets are overriding the rules from the style guide. Any elements that have an override are highlighted.
+The code parses all the style sheets on the page and keeps track of every rule and how it affects all elements. When you run the audit, it takes this information and looks at which rules from other style sheets are overriding the rules from the style guide. Any elements that have an override are highlighted.
 
 If you click on any highlighted element, the tool will show you which rules from which style sheets are providing the overrides.
 
@@ -37,7 +37,7 @@ auditStyleGuide('pattern-lib', ['bootstrap','normalize']);
 
 The tool also allows you to customize the audit. You can pass an array of custom rules to `auditStyleGuide()` as the third parameter that will highlight any element that fails the rule.
 
-For example, let's say you wanted to validate the accessibility of your page by ensuring that all anchor tags navigate and are not just there for [JavaScript events](http://webaim.org/techniques/hypertext/). You could write a rule that checks that all anchor tags have a valid `href` property and run the rule with the audit. Any anchor tags that do not hava valid `href` will be highlighted.
+For example, let's say you wanted to validate the accessibility of your page by ensuring that all anchor tags navigate and are not just there for [JavaScript events](http://webaim.org/techniques/hypertext/). You could write a rule that checks that all anchor tags have a valid `href` property and run the rule with the audit. Any anchor tags that do not have a valid `href` will be highlighted.
 
 ```javascript
 var customRules = [{
