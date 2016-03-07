@@ -8,7 +8,7 @@ The code parses all the style sheets on the page and keeps track of every rule a
 
 If you click on any highlighted element, the tool will show you which rules from which style sheets are providing the overrides.
 
-The tool will also outline each element that is using a rule from the style guide. This is helpful to visiual see if you might have missed an element that should be using the style guide but isn't. This will ignore any rules that use just element selectors (no class selector in the rule) since those are always applied so long as the style guide is being used on the page.
+The tool will also outline each element that is using a rule from the style guide. This helps to highlight any elements that should be using the style guide but aren't. Rules that purely use element selectors (no class selector in the rule) will be ignored since those are always applied so long as the style guide is being used on the page.
 
 ![](/../screenshots/image0.png?raw=true)
 
@@ -56,7 +56,7 @@ A rule consists of three properties:
 
 ## Using the bookmarklet
 
-You can also create a bookmarklet that will run the entire audit for you on any page. Just edit `src/run.js` to include any custom rules and the style sheet to audit, and then run `gulp scripts`. This will create `bookmarklet.js` that you can then copy into your faviortes bar.
+You can also create a bookmarklet that will run the entire audit for you on any page. Just edit `src/run.js` to include any custom rules and the style sheet to audit, and then run `gulp scripts`. This will create `bookmarklet.js` that you can then copy into your favorites bar.
 
 This is an excellent tool to give to designers who can then help run the audits of the site on their own.
 
