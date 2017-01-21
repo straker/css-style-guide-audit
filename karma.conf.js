@@ -21,7 +21,7 @@ module.exports = function(config) {
       // run in this order
       'test/core.spec.js',
       'test/parseStyleSheets.spec.js',
-      'test/auditResults.spec.js'
+      'test/auditStyleGuide.spec.js'
     ]
   });
 };
