@@ -104,9 +104,9 @@ describe('getRules', function() {
   });
 
   it('should silently fail when requesting a CORS styleSheet', function() {
-    var prismSheet = $('link[href*="prism"]')[0].sheet;
+    var pureSheet = $('link[href*="pure"]')[0].sheet;
     var fn = function() {
-      getRules(prismSheet);
+      getRules(pureSheet);
     }
 
     expect(fn).to.not.throw(Error);
@@ -158,12 +158,12 @@ describe('getStyleSheetRules', function() {
   });
 
   describe('should', function() {
-    var link = $('link[href*="prism"]')[0];
+    var link = $('link[href*="pure"]')[0];
 
     beforeEach(function() {
       // see comments above
       sinon.stub(window, 'loadCSSCors', function(url, callback) {
-        callback({sheet: 'prism.css'});
+        callback({sheet: 'pure.css'});
       });
       loadCSSCors = window.loadCSSCors;
 
@@ -184,17 +184,17 @@ describe('getStyleSheetRules', function() {
     });
 
     it('call loadCSSCors when looking at a CORS styleSheet', function() {
-      var prismSheet = $('link[href*="prism"]')[0].sheet;
+      var pureSheet = $('link[href*="pure"]')[0].sheet;
       var callback = sinon.stub();
-      getStyleSheetRules(prismSheet, callback);
+      getStyleSheetRules(pureSheet, callback);
 
       expect(loadCSSCors.calledOnce).to.be.true;
     });
 
     it('call the callback when looking at a CORS styleSheet', function() {
-      var prismSheet = $('link[href*="prism"]')[0].sheet;
+      var pureSheet = $('link[href*="pure"]')[0].sheet;
       var callback = sinon.stub();
-      getStyleSheetRules(prismSheet, callback);
+      getStyleSheetRules(pureSheet, callback);
 
       expect(callback.calledOnce).to.be.true;
     });
@@ -204,20 +204,20 @@ describe('getStyleSheetRules', function() {
 
       getStyleSheetRules(link.sheet, function(rules, href){
         expect(typeof styleSheets[href]).to.equal('object');
-        expect(styleSheets[href].styleSheet).to.equal('prism.css');
+        expect(styleSheets[href].styleSheet).to.equal('pure.css');
       });
     });
 
     it('look at the dictionary for previously loaded CORS styleSheets', function() {
-      var prismSheet = $('link[href*="prism"]')[0].sheet;
-      getStyleSheetRules(prismSheet, function() {});
+      var pureSheet = $('link[href*="pure"]')[0].sheet;
+      getStyleSheetRules(pureSheet, function() {});
 
       // modify dictionary to test if the 2nd call really does get this styleSheet
-      styleSheets[prismSheet.href].styleSheet = 'notPrism.css';
+      styleSheets[pureSheet.href].styleSheet = 'notpure.css';
 
-      getStyleSheetRules(prismSheet, function(rules, href) {
+      getStyleSheetRules(pureSheet, function(rules, href) {
         expect(typeof styleSheets[href]).to.equal('object');
-        expect(styleSheets[href].styleSheet).to.equal('notPrism.css');
+        expect(styleSheets[href].styleSheet).to.equal('notpure.css');
       });
 
       expect(loadCSSCors.calledOnce).to.be.true;

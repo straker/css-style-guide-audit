@@ -1,6 +1,6 @@
 {
   "name": "css-style-guide-audit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Audit the CSS on a page to ensure that no other styles are overriding the pattern library's styles",
   "main": "index.js",
   "scripts": {

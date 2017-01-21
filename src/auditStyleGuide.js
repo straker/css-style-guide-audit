@@ -36,12 +36,12 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
   }
   audit = {elms: []};
 
-  elms = document.querySelectorAll('[data-style-audit]');
+  elms = document.body.querySelectorAll('[data-style-audit]');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-audit');
   }
 
-  elms = document.querySelectorAll('[data-style-using]');
+  elms = document.body.querySelectorAll('[data-style-using]');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
   }
@@ -68,7 +68,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
           specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
           try {
-            elms = document.querySelectorAll(selector);
+            elms = document.body.querySelectorAll(selector);
           }
           catch(e) {
             return;
@@ -148,7 +148,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
 
   // create the custom rule report
   for (i = 0; i < customRules.length; i++) {
-    elms = document.querySelectorAll(customRules[i].selector);
+    elms = document.body.querySelectorAll(customRules[i].selector);
 
     for (var j = 0; j < elms.length; j++) {
       elms[j].problems = elms[j].problems || [];
@@ -162,7 +162,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
   }
 
   // remove any styles from audit results
-  elms = document.querySelectorAll('.audit-results *');
+  elms = document.body.querySelectorAll('.audit-results *');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
     elm.removeAttribute('data-style-audit');

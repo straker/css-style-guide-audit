@@ -549,7 +549,7 @@ var SPECIFICITY = (function() {
 					index = selector.indexOf(match);
 					length = match.length;
 					parts.push({
-						selector: match,
+						selector: input.substr(index, length),
 						type: type,
 						index: index,
 						length: length
@@ -559,6 +559,31 @@ var SPECIFICITY = (function() {
 				}
 			}
 		};
+
+		// Replace escaped characters with plain text, using the "A" character
+		// https://www.w3.org/TR/CSS21/syndata.html#characters
+		(function() {
+			var replaceWithPlainText = function(regex) {
+					var matches, i, len, match;
+					if (regex.test(selector)) {
+						matches = selector.match(regex);
+						for (i = 0, len = matches.length; i < len; i += 1) {
+							match = matches[i];
+							selector = selector.replace(match, Array(match.length + 1).join('A'));
+						}
+					}
+				},
+				// Matches a backslash followed by six hexadecimal digits followed by an optional single whitespace character
+				escapeHexadecimalRegex = /\\[0-9A-Fa-f]{6}\s?/g,
+				// Matches a backslash followed by fewer than six hexadecimal digits followed by a mandatory single whitespace character
+				escapeHexadecimalRegex2 = /\\[0-9A-Fa-f]{1,5}\s/g,
+				// Matches a backslash followed by any character
+				escapeSpecialCharacter = /\\./g;
+
+			replaceWithPlainText(escapeHexadecimalRegex);
+			replaceWithPlainText(escapeHexadecimalRegex2);
+			replaceWithPlainText(escapeSpecialCharacter);
+		}());
 
 		// Remove the negation psuedo-class (:not) but leave its argument because specificity is calculated on its argument
 		(function() {
@@ -668,12 +693,12 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
   }
   audit = {elms: []};
 
-  elms = document.querySelectorAll('[data-style-audit]');
+  elms = document.body.querySelectorAll('[data-style-audit]');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-audit');
   }
 
-  elms = document.querySelectorAll('[data-style-using]');
+  elms = document.body.querySelectorAll('[data-style-using]');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
   }
@@ -700,7 +725,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
           specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
           try {
-            elms = document.querySelectorAll(selector);
+            elms = document.body.querySelectorAll(selector);
           }
           catch(e) {
             return;
@@ -780,7 +805,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
 
   // create the custom rule report
   for (i = 0; i < customRules.length; i++) {
-    elms = document.querySelectorAll(customRules[i].selector);
+    elms = document.body.querySelectorAll(customRules[i].selector);
 
     for (var j = 0; j < elms.length; j++) {
       elms[j].problems = elms[j].problems || [];
@@ -794,7 +819,7 @@ function auditStyleGuide(styleGuideSheet, ignoreSheet, customRules) {
   }
 
   // remove any styles from audit results
-  elms = document.querySelectorAll('.audit-results *');
+  elms = document.body.querySelectorAll('.audit-results *');
   for (x = 0; elm = elms[x]; x++) {
     elm.removeAttribute('data-style-using');
     elm.removeAttribute('data-style-audit');
@@ -927,7 +952,7 @@ function parseStyleSheets() {
   // allow the loading screen to show
   setTimeout(function() {
     // clear all previous parsing
-    var all = document.querySelectorAll('[data-style-computed]');
+    var all = document.body.querySelectorAll('[data-style-computed]');
     var i, allLength, sheetLength;
     for (i = 0, allLength = all.length; i < allLength; i++) {
       all[i].computedStyles = {};
@@ -955,7 +980,7 @@ function parseStyleSheets() {
               specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
               try {
-                elms = document.querySelectorAll(selector);
+                elms = document.body.querySelectorAll(selector);
               }
               catch(e) {
                 continue;
