@@ -1,9 +1,9 @@
-describe('auditResults', function() {
+describe('auditStyleGuide', function() {
   // ensure this code has been run first
   parseStyleSheets();
 
   it('should add the "data-style-audit" attribute to any elements that have a rule that overrides a styleSheet rule', function() {
-    auditResults('patternLib');
+    auditStyleGuide('patternLib');
 
     expect($('[data-style-audit]').length).to.be.above(0);
   });

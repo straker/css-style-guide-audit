@@ -42,7 +42,7 @@ function parseStyleSheets() {
   // allow the loading screen to show
   setTimeout(function() {
     // clear all previous parsing
-    var all = document.querySelectorAll('[data-style-computed]');
+    var all = document.body.querySelectorAll('[data-style-computed]');
     var i, allLength, sheetLength;
     for (i = 0, allLength = all.length; i < allLength; i++) {
       all[i].computedStyles = {};
@@ -70,7 +70,7 @@ function parseStyleSheets() {
               specificity = SPECIFICITY.calculate(selector)[0].specificity.split(',').map(Number);
 
               try {
-                elms = document.querySelectorAll(selector);
+                elms = document.body.querySelectorAll(selector);
               }
               catch(e) {
                 continue;

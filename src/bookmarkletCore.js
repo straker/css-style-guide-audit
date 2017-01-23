@@ -11,5 +11,5 @@ script.onload = function() {
   parseStyleSheets();
 };
 
-script.src = 'https://db.tt/yx4ODEVh';
+script.src = 'https://dl.dropboxusercontent.com/u/22115399/index-1.0.1.min.js';
 document.head.appendChild(script);
