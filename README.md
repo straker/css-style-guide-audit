@@ -2,6 +2,8 @@
 
 Audit the CSS on a page to see what elements are using styles from the style guide and which styles are overriding them.
 
+**IMPORTANT: Dropbox changed how their Public folder worked and removed all previous links to files hosted in it (which is where the Bookmarklet script is kept). All previous versions (1.0.1 and below) of the bookmarklet will no longer work until you've updated to the latest code.**
+
 ## How it works
 
 The code parses all the style sheets on the page and keeps track of every rule and how it affects all elements. When you run the audit, it takes this information and looks at which rules from other style sheets are overriding the rules from the style guide. Any elements that have an override are highlighted.
